@@ -25,7 +25,7 @@ public class Main extends Application {
         //launch(args);
         var a = FileParser.getFiles();
 
-        FileParser.readParseFile("p04");
+        var problem = FileParser.readParseFile("p04");
 
         System.out.println(Arrays.toString(a));
     }
