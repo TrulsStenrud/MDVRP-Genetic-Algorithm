@@ -3,6 +3,17 @@
 
 <?import javafx.scene.control.Button?>
 <?import javafx.scene.control.Label?>
+<?import javafx.scene.layout.HBox?>
+<?import javafx.scene.layout.VBox?>
+<?import javafx.scene.canvas.Canvas?>
+<?import javafx.scene.control.ComboBox?>
 <GridPane fx:controller="sample.Controller"
           xmlns:fx="http://javafx.com/fxml" alignment="center" hgap="10" vgap="10">
+    <HBox>
+        <VBox>
+            <ComboBox fx:id="taskChooser"/>
+        </VBox>
+        <Canvas fx:id="canvas" width="1000" height="1000"/>
+    </HBox>
+
 </GridPane>
