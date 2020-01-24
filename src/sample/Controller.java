@@ -25,6 +25,34 @@ public class Controller {
         gc.scale(6, 6);
         drawDots();
         drawDepos();
+
+        var genes = problem.initiate();
+
+        int c = 0;
+        for(int i = 0; i < 1; i++){
+            var color = Color.rgb(c, c, c);
+            drawLines(genes[i], color);
+            c+=20;
+        }
+    }
+
+    private void drawLines(int[] gene, Color color) {
+        gc.setStroke(color);
+
+        var depot = problem.depots.get(0).point;
+        var start = problem.customers.get(gene[0]).point;
+        gc.strokeLine(depot.getX(), depot.getY(), start.getX(), start.getY());
+
+        for(int i = 1; i < gene.length; i++){
+            var pointA = problem.customers.get(gene[i]).point;
+            var pointB = problem.customers.get(gene[i-1]).point;
+            gc.strokeLine(pointA.getX(), pointA.getY(), pointB.getX(), pointB.getY());
+        }
+
+        var pointA = problem.customers.get(gene[gene.length-1]).point;
+        var pointB = problem.depots.get(0).point;
+        gc.strokeLine(pointA.getX(), pointA.getY(), pointB.getX(), pointB.getY());
+
     }
 
     private void drawDepos() {
