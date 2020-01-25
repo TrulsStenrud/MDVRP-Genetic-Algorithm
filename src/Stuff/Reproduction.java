@@ -23,8 +23,8 @@ public class Reproduction {
         return new int[][]{child1, child2};
     }
 
-
     // this is only public to allow testing
+
     public static int[] innerMappedCrossover(int[] parentA, int[] parentB, int start, int end) {
 
         int[] child = new int[parentA.length];

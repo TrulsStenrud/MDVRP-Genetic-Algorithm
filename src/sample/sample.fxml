@@ -10,8 +10,9 @@
 <GridPane fx:controller="sample.Controller"
           xmlns:fx="http://javafx.com/fxml" alignment="center" hgap="10" vgap="10">
     <HBox>
-        <VBox>
+        <VBox spacing="50">
             <ComboBox fx:id="taskChooser"/>
+            <Button fx:id="startButton" text="Start"/>
         </VBox>
         <Canvas fx:id="canvas" width="1000" height="1000"/>
     </HBox>

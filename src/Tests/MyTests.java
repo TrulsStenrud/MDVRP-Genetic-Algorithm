@@ -1,4 +1,5 @@
 package Tests;
+import Stuff.GA;
 import Stuff.Reproduction;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
@@ -14,6 +15,17 @@ public class MyTests {
         int[] actual = Reproduction.innerMappedCrossover(parent1, parent2, 3, 6);
 
         int[] expected = new int[]{9, 3, 2, 4, 5, 6, 7, 1, 8};
+
+        Assertions.assertArrayEquals(expected, actual);
+    }
+
+    @Test
+    public void inverseSubstring(){
+        int[] actual = new int[]{1, 2, 3, 4, 5, 6, 7, 8, 9};
+
+        GA.inverseSubstring(actual, 3, 6);
+
+        int[] expected = new int[]{1, 2, 3, 7, 6, 5, 4, 8, 9};
 
         Assertions.assertArrayEquals(expected, actual);
     }
