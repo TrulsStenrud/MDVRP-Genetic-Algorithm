@@ -9,8 +9,8 @@ public class GA {
 
     public final Problem problem;
 
-    int population = 5000;
-    int nParents = 100;
+    int population = 1000;
+    int nParents = 50;
     double mutationRate = 0.1;
 
     public int[][] genes;
@@ -26,8 +26,7 @@ public class GA {
         genes = new int[population][];
 
         for(int x = 0; x < genes.length; x++){
-            int[] gene = generateShortRoute();
-
+            int[] gene = generateRandomRoute();
             genes[x] = gene;
         }
 
@@ -35,7 +34,7 @@ public class GA {
         evaluate();
     }
 
-    private int[] generateRoute() {
+    private int[] generateRandomRoute() {
         var gene = new int[problem.customers.size()];
 
         for (int i = 0; i < gene.length; i++){
