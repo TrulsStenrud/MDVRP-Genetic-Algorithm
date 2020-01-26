@@ -3,6 +3,7 @@ package Stuff;
 import Phenotype.MaybeCustomer;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
 public class Genome {
@@ -16,6 +17,17 @@ public class Genome {
         }
     }
 
+    private Genome(Chromosome[] clone) {
+        this.chromosomes = clone;
+    }
+
+    public Genome copy(){
+        var chromosomes = new Chromosome[this.chromosomes.length];
+        for(int i = 0; i < chromosomes.length; i++){
+            chromosomes[i] = this.chromosomes[i].copy();
+        }
+        return new Genome(chromosomes);
+    }
 
     public void add(int i, int customer) {
         chromosomes[i].add(customer);

@@ -10,6 +10,9 @@ public class Chromosome {
         this.dna = new ArrayList<Integer>();
     }
 
+    private Chromosome(ArrayList<Integer> dna) {
+        this.dna = dna;
+    }
 
     public void add(int customer) {
         dna.add(customer);
@@ -21,5 +24,16 @@ public class Chromosome {
 
     public int length(){
         return dna.size();
+    }
+
+    public Chromosome copy() {
+        var newList = new ArrayList<Integer>();
+        newList.addAll(dna);
+        return new Chromosome(dna);
+    }
+
+    public void update(ArrayList<Integer> gene) {
+        dna.clear();
+        dna.addAll(gene);
     }
 }

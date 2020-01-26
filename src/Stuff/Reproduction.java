@@ -1,5 +1,7 @@
 package Stuff;
 
+import Phenotype.Phenotype;
+
 import java.util.Arrays;
 
 public class Reproduction {
@@ -78,4 +80,5 @@ public class Reproduction {
         }
         return false;
     }
+
 }

@@ -24,6 +24,7 @@ public class Controller {
     private GA2 ga = null;
     private AnimationTimer timer;
     private Problem problem;
+    int counter = 0;
 
     @FXML
     public void initialize(){
@@ -81,9 +82,19 @@ public class Controller {
         //timer.start();
 
 
-        var result = ga.initiate();
+        if(counter == 0){
+            var result = ga.initiate();
+            System.out.println(result.fitness());
+            drawPaths(result);
+            counter++;
+        }
+        else{
+            var result = ga.generation();
+            System.out.println(result.fitness());
+            drawBoard();
+            drawPaths(result);
 
-        drawPaths(result);
+        }
     }
 
     private void drawPaths(Phenotype result) {
@@ -99,6 +110,9 @@ public class Controller {
             for(int car = 0; car < current.size(); car++){
 
                 var currCar = current.get(car);
+
+                if(currCar.size() == 0)
+                    continue;
 
                 var start = c.get(currCar.get(0)).point;
                 gc.strokeLine(depot.getX(), depot.getY(), start.getX(), start.getY());

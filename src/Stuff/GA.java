@@ -48,7 +48,7 @@ public class GA {
         return gene;
     }
 
-    private int[] generateShortRoute() {
+    public static int[] generateShortRoute(Problem problem) {
         List<Point2D> points = problem.customers.stream().map(x -> x.point).collect(Collectors.toList());
         var remaining = new ArrayList<Point2D>();
 
