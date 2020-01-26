@@ -14,7 +14,7 @@ public class GA {
     double mutationRate = 0.1;
 
     public int[][] genes;
-    private HashMap<int[], Phenotype> phenotypes;
+
     HashMap<int[], Double> fitness = new HashMap<>();
 
 

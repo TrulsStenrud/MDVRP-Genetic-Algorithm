@@ -1,12 +1,9 @@
 package sample;
 
 import DataFiles.FileParser;
-import Stuff.Customer;
-import Stuff.Depot;
-import Stuff.GA;
-import Stuff.Problem;
+import Phenotype.Phenotype;
+import Stuff.*;
 import javafx.animation.AnimationTimer;
-import javafx.application.Platform;
 import javafx.collections.FXCollections;
 import javafx.event.ActionEvent;
 import javafx.event.Event;
@@ -17,7 +14,6 @@ import javafx.scene.control.Button;
 import javafx.scene.control.ComboBox;
 import javafx.scene.paint.Color;
 
-import java.awt.*;
 import java.util.Arrays;
 
 public class Controller {
@@ -25,8 +21,9 @@ public class Controller {
     public ComboBox taskChooser;
     public Button startButton;
     private GraphicsContext gc = null;
-    private GA ga = null;
+    private GA2 ga = null;
     private AnimationTimer timer;
+    private Problem problem;
 
     @FXML
     public void initialize(){
@@ -50,7 +47,7 @@ public class Controller {
         timer = new AnimationTimer(){
             @Override
             public void handle(long l) {
-                drawPath();
+                drawBoard();
             }
         };
     }
@@ -61,35 +58,83 @@ public class Controller {
 
     private void initiateChoosenTask() {
         var task = (String)taskChooser.getValue();
-        ga  = new GA(FileParser.readParseFile(task));
-        ga.initiate();
-
-        drawPath();
+        problem = FileParser.readParseFile(task);
+        ga  = new GA2(problem);
+        drawBoard();
     }
 
     private void buttonClicked(ActionEvent actionEvent) {
 
 
-        Thread thread = new Thread(){
-            public void run(){
+//        Thread thread = new Thread(){
+//            public void run(){
+//
+//                int i = 0;
+//                while(i++ < 500){
+//                    ga.generation();
+//                }
+//                timer.stop();
+//            }
+//        };
 
-                int i = 0;
-                while(i++ < 500){
-                    ga.generation();
-                }
-                timer.stop();
-            }
-        };
+        //thread.start();
+        //timer.start();
 
-        thread.start();
-        timer.start();
+
+        var result = ga.initiate();
+
+        drawPaths(result);
     }
 
-    private void drawPath(){
+    private void drawPaths(Phenotype result) {
+        gc.setStroke(Color.BLACK);
+        var d = ga.problem.depots;
+        var c = ga.problem.customers;
+
+        for(int depoI = 0; depoI < result.FML.size(); depoI++){
+
+            var depot = d.get(depoI).point;
+            var current = result.FML.get(depoI);
+
+            for(int car = 0; car < current.size(); car++){
+
+                var currCar = current.get(car);
+
+                var start = c.get(currCar.get(0)).point;
+                gc.strokeLine(depot.getX(), depot.getY(), start.getX(), start.getY());
+
+                for(int i = 1; i < currCar.size(); i++){
+                    var pointA = c.get(currCar.get(i)).point;
+                    var pointB = c.get(currCar.get(i - 1)).point;
+                    gc.strokeLine(pointA.getX(), pointA.getY(), pointB.getX(), pointB.getY());
+                }
+
+                var pointA = c.get(currCar.get(currCar.size() - 1)).point;
+                var pointB = d.get(depoI).point;
+                gc.strokeLine(pointA.getX(), pointA.getY(), pointB.getX(), pointB.getY());
+
+            }
+
+
+        }
+
+//        gc.setStroke(Color.RED);
+//        for(var x: result.FML){
+//            for(var y: x){
+//                for(var z: y){
+//                    var pointA = c.get(z).point;
+//                    var pointB = d.get(0).point;
+//                    gc.strokeLine(pointA.getX(), pointA.getY(), pointB.getX(), pointB.getY());
+//                }
+//            }
+//        }
+    }
+
+    private void drawBoard(){
         gc.clearRect(0, 0, 1000, 1000);
         drawDots();
         drawDepos();
-        drawLines(ga.genes[0], Color.BLACK);
+        //drawLines(ga.genes[0], Color.BLACK);
     }
 
     private void drawLines(int[] gene, Color color) {
