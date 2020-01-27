@@ -9,7 +9,7 @@ public class GA2 {
 
     public final Problem problem;
 
-    int population = 10;
+    int population = 100;
     int nParents = 5;
     double mutationRate = 0.1;
     HashMap<Genome, Phenotype> phenotypes = new HashMap<Genome, Phenotype>();
@@ -103,7 +103,9 @@ public class GA2 {
             sum += x.length();
         }
 
-        System.out.println("Is: " + sum + ". Should be: " + problem.customers.size());
+        if(sum != problem.customers.size())
+            System.out.println("Is: " + sum + ". Should be: " + problem.customers.size());
+
         return gene;
     }
 
@@ -138,7 +140,7 @@ public class GA2 {
         int power = 5;
         double sum = 0.0;
         for (var d : phenotypes.values()) {
-            sum+=Math.pow(1/d.fitness(), power);
+            sum+=Math.pow(100/d.fitness(), power);
         }
 
         List<Genome> parents = new ArrayList<>();
@@ -146,7 +148,7 @@ public class GA2 {
         double t = 0.0;
         for (int i = 0; i < genes.length; i++) {
             double fitness = phenotypes.get(genes[i]).fitness();
-            var fp = Math.pow(1/fitness, power)/sum;
+            var fp = Math.pow(100/fitness, power)/sum;
             probabilityFitness[i] = t+=fp;
         }
 
@@ -176,7 +178,10 @@ public class GA2 {
                 pB = (int) (Math.random()*nParents);
             }
 
-            Phenotype A = new Phenotype(phenotypes.get(parents.get(pA)).genome, cost,  problem), B = new Phenotype(phenotypes.get(parents.get(pA)).genome, cost, problem);
+            var parentGeneA = phenotypes.get(parents.get(pA)).genome;
+            var childGeneA = parentGeneA.copy();
+
+            Phenotype A = new Phenotype(childGeneA, cost,  problem), B = new Phenotype(phenotypes.get(parents.get(pA)).genome.copy(), cost, problem);
 
             A.Reproduce(B);
 
@@ -199,7 +204,7 @@ public class GA2 {
                 r = (int) (Math.random() *(population - nParents));
             }
             taken.add(r);
-            //scrambleMutation(parents.get(r));
+            mutate(phenotypes.get(parents.get(r)));
         }
 
 
@@ -209,6 +214,35 @@ public class GA2 {
 
         evaluate();
         return phenotypes.get(genes[0]);
+    }
+
+    private void mutate(Phenotype x) {
+
+        for(int i = 0; i< x.FML.size(); i++){
+            var d = x.FML.get(i);
+
+            if(d.removeIf(v -> v.size() == 0)){
+                x.updateGenome(i);
+            }
+
+        }
+
+        int depIndex = (int) (Math.random()*x.FML.size());
+
+        var depot = x.FML.get(depIndex);
+
+        int vIndex = (int) (Math.random()*depot.size());
+
+        var vehicle = depot.get(vIndex);
+
+        int cIndex = (int) (Math.random()*vehicle.size());
+        int customer = vehicle.get(cIndex);
+
+        vehicle.remove(Integer.valueOf(customer));
+
+        x.insertCheapest(depIndex, depot, customer);
+
+        x.updateGenome(depIndex);
     }
 
 

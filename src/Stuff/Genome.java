@@ -33,6 +33,14 @@ public class Genome {
         chromosomes[i].add(customer);
     }
 
+    public int sum(){
+        int sum = 0;
+        for(var c : chromosomes){
+            sum+= c.length();
+        }
+        return sum;
+    }
+
     public Chromosome get(int i){
         return chromosomes[i];
     }

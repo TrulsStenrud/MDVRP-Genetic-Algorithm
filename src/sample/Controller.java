@@ -89,7 +89,11 @@ public class Controller {
             counter++;
         }
         else{
-            var result = ga.generation();
+
+            Phenotype result = null;
+            for (int i = 0; i < 100; i++) {
+            result = ga.generation();
+            }
             System.out.println(result.fitness());
             drawBoard();
             drawPaths(result);

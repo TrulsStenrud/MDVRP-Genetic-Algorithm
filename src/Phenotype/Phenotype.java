@@ -5,6 +5,7 @@ import Stuff.Depot;
 import Stuff.Genome;
 import Stuff.Problem;
 
+
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -17,8 +18,8 @@ public class Phenotype {
     private final Depot[] depots;
     private double[][] cost;
     private int customerCount;
-    HashMap<List<Integer>, Double> routeCost;
-    HashMap<List<Integer>, Double> routeLoad;
+    //HashMap<List<Integer>, Double> routeCost;
+    //HashMap<List<Integer>, Double> routeLoad;
     public List<List<List<Integer>>> FML;
     private double fitness = -1;
 
@@ -39,20 +40,19 @@ public class Phenotype {
 
         List<List<List<Integer>>> fml = phase1(routeCost, routeLoad);
 
-        var sum = 0;
-        for (var x : fml) {
-            for (var y : x) {
-                sum += y.size();
+        int sum = getSum(fml);
 
-            }
+        if(sum != genome.sum()){
+            int a = 2;
         }
 
-        System.out.println("Is: " + sum + ". Should be: " + problem.customers.size());
+        if(sum != problem.customers.size())
+             System.out.println("Is: " + sum + ". Should be: " + problem.customers.size() + " in phenotype");
 
         phase2(fml, routeCost, routeLoad);
         this.FML = fml;
-        this.routeCost = routeCost;
-        this.routeLoad = routeLoad;
+        //this.routeCost = routeCost;
+        //this.routeLoad = routeLoad;
     }
 
     private void phase2(List<List<List<Integer>>> fml, HashMap<List<Integer>, Double> routeCost, HashMap<List<Integer>, Double> routeLoad) {
@@ -181,10 +181,15 @@ public class Phenotype {
     public double fitness() {
         if (fitness == -1) {
             double sum = 0;
-            for (double value : routeCost.values()) {
-                sum += value;
+            //for (double value : routeCost.values()) {
+              //  sum += value;
+            //}
+            for(int i = 0; i < FML.size(); i++){
+                var current = FML.get(i);
+                for(int j = 0; j < current.size(); j++){
+                    sum+= getRouteCost(current.get(j), i);
+                }
             }
-
             fitness = sum;
         }
 
@@ -192,6 +197,7 @@ public class Phenotype {
     }
 
     public void Reproduce(Phenotype b) {
+
         if (b.FML.size() != this.FML.size())
             System.out.println("Should not be merged");
 
@@ -203,13 +209,32 @@ public class Phenotype {
         int routeA = (int) (Math.random() * depotA.size());
         int routeB = (int) (Math.random() * depotB.size());
 
-        var routeFromA = depotA.remove(routeA);
-        var routeFromB = depotB.remove(routeB);
+        var fromA = depotA.get(routeA);
+        var fromB = depotB.get(routeB);
 
-       /* routeCost.remove(routeFromA);
-        routeLoad.remove(routeFromA);
-        b.routeCost.remove(routeFromB);
-        b.routeLoad.remove(routeFromB);*/
+        var routeFromA = new ArrayList<Integer>();
+        routeFromA.addAll(fromA);
+        var routeFromB = new ArrayList<Integer>();
+        routeFromB.addAll(fromB);
+
+        for(var depo: FML){
+            for(var routes : depo){
+                routes.removeAll(routeFromB);
+            }
+        }
+
+        var sum = getSum(b.FML);
+
+        for(var depo: b.FML){
+            for(var routes : depo){
+                routes.removeAll(routeFromA);
+            }
+        }
+        var sum2 = getSum(b.FML);
+
+        if(sum2 != sum - routeFromA.size()){
+            int stop = 0;
+        }
 
         for (int newC : routeFromB) {
             insertCheapest(depot, depotA, newC);
@@ -218,24 +243,52 @@ public class Phenotype {
         for (int newC : routeFromA) {
             b.insertCheapest(depot, depotB, newC);
         }
+        var sum3 = getSum(b.FML);
+
+        if(sum3 != sum){
+            int stop = 0;
+        }
+
+
 
         updateGenome(depot);
         b.updateGenome(depot);
+        fitness = -1;
+        b.fitness = -1;
+
     }
 
-    private void updateGenome(int depot) {
-        var depList = FML.get(depot);
+    private int getSum(List<List<List<Integer>>> fml) {
+        var sum = 0;
+        for (var a : fml) {
+            for (var c : a) {
+                sum += c.size();
+            }
+        }
+        return sum;
+    }
 
-        var gene = new ArrayList<Integer>();
+    public void updateGenome(int depot) {
+        if(genome.sum() != customerCount)
+            System.out.println("update genem");
 
-        for(var route: depList){
-            gene.addAll(route);
+        for(int i = 0; i < FML.size(); i++){
+            var depList = FML.get(i);
+            var gene = new ArrayList<Integer>();
+
+            for (var route : depList) {
+                gene.addAll(route);
+            }
+
+            genome.get(i).update(gene);
+
         }
 
-        genome.get(depot).update(gene);
+        if(genome.sum() != customerCount)
+            System.out.println("update genem");
     }
 
-    private void insertCheapest(int depot, List<List<Integer>> routes, int newC) {
+    public void insertCheapest(int depot, List<List<Integer>> routes, int newC) {
 
         int minRoute = -1;
         int minI = -1;
@@ -243,76 +296,93 @@ public class Phenotype {
 
         for (int i = 0; i < routes.size(); i++) {
             var currRoute = routes.get(i);
-            var currCost = routeCost.get(currRoute);
+            double currCost = getRouteCost(currRoute, depot);
 
-
-            if(currCost == null )
-            {
-                int a = 2;
-            }
-
-            if ((routeLoad.get(currRoute) + customers[newC].demand) > depots[depot].maxLoad) {
+            double routeLoad = getRouteLoad(currRoute);
+            if ((routeLoad + customers[newC].demand) > depots[depot].maxLoad) {
                 continue;
             }
 
-            double newCost = currCost
-                    - cost[currRoute.get(0)][depot + customerCount]
-                    + cost[newC][depot + customerCount]
-                    + cost[currRoute.get(0)][newC];
+            for (int index = 0; index < currRoute.size(); index++) {
+                var costOfInsertion = costOfInsertion(currRoute, depot, newC, index);
 
-            if (newCost <= depots[depot].maxRoute) {
-                if (newCost - currCost < minCost) {
-                    minRoute = i;
-                    minI = 0;
-                    minCost = newCost - currCost;
-                }
-            }
-
-            for (int j = 1; j < currRoute.size() - 2; j++) {
-                newCost = currCost
-                        - cost[currRoute.get(j)][j + 1]
-                        + cost[newC][currRoute.get(j)]
-                        + cost[currRoute.get(j + 1)][newC];
-
-                if (newCost <= depots[depot].maxRoute) {
-                    if (newCost - currCost < minCost) {
+                if(currCost + costOfInsertion <= depots[depot].maxRoute){
+                    if(costOfInsertion < minCost){
                         minRoute = i;
-                        minI = 0;
-                        minCost = newCost - currCost;
+                        minCost = costOfInsertion;
+                        minI = index;
                     }
                 }
             }
-
-            int lastIndex = currRoute.size() - 1;
-            var lastStop = currRoute.get(lastIndex);
-            newCost = currCost
-                    - cost[lastStop][depot + customerCount]
-                    + cost[newC][depot + customerCount]
-                    + cost[lastStop][newC];
-
-            if (newCost <= depots[depot].maxRoute) {
-                if (newCost - currCost < minCost) {
-                    minRoute = i;
-                    minI = lastIndex;
-                    minCost = newCost - currCost;
-                }
-            }
-
         }
 
-        if(minRoute == -1){
+        if (minRoute == -1) {
             var newRoute = new ArrayList<Integer>();
             newRoute.add(newC);
             routes.add(newRoute);
-            routeCost.put(newRoute, cost[depot][newC]*2);
-            routeLoad.put(newRoute, (double) customers[newC].demand);
-        }
-        else{
+            //routeCost.put(newRoute, cost[depot][newC] * 2);
+            //outeLoad.put(newRoute, (double) customers[newC].demand);
+        } else {
             var route = routes.get(minRoute);
             route.add(minI, newC);
-            routeCost.put(route, routeCost.get(route) + minCost);
-            routeLoad.put(route, routeLoad.get(route) + customers[newC].demand);
+            //routeCost.put(route, routeCost.get(route) + minCost);
+            //routeLoad.put(route, routeLoad.get(route) + customers[newC].demand);
         }
 
+    }
+
+    private double getRouteLoad(List<Integer> currRoute) {
+        double sum = 0.0;
+        for(var c: currRoute){
+            sum+= customers[c].demand;
+        }
+        return sum;
+    }
+
+    private double getRouteCost(List<Integer> currRoute, int depot) {
+        double c = 0.0;
+
+        if(currRoute.size() == 0)
+            return 0;
+
+        c += cost[depot + customerCount][currRoute.get(0)];
+
+        for(int i = 1; i < currRoute.size()-2; i++){
+            c+= cost[currRoute.get(i-1)][currRoute.get(i)];
+        }
+
+        c += cost[depot + customerCount][currRoute.get(currRoute.size()-1)];
+        return c;
+    }
+
+    private double costOfInsertion(List<Integer> currRoute, int depot, int newC, int index) {
+
+        int routSize = currRoute.size();
+
+        if (routSize > 0) {
+
+            if (index == routSize) {
+                double newCost =
+                        -cost[currRoute.get(index-1)][depot + customerCount]
+                                + cost[newC][depot + customerCount]
+                                + cost[currRoute.get(index-1)][newC];
+                return newCost;
+            }
+            if(index == 0){
+                double newCost =
+                        -cost[currRoute.get(0)][depot + customerCount]
+                                + cost[newC][depot + customerCount]
+                                + cost[currRoute.get(0)][newC];
+                return newCost;
+            }
+
+            double newCost =
+                    -cost[currRoute.get(index)][depot + customerCount]
+                            + cost[newC][depot + customerCount]
+                            + cost[currRoute.get(index)][newC];
+            return newCost;
+        }
+
+        return 2*cost[depot + customerCount][newC];
     }
 }
