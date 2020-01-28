@@ -1,20 +1,21 @@
 package Stuff;
 
-import Phenotype.MaybeCustomer;
-import Phenotype.Phenotype;
+import Types.MaybeCustomer;
+import Types.Phenotype;
+import javafx.geometry.Point2D;
 
 import java.util.*;
+import java.util.stream.Collectors;
 
 public class GA2 {
 
     public final Problem problem;
 
-    int population = 100;
-    int nParents = 5;
+    int population = 1000;
+    int nParents = 50;
     double mutationRate = 0.1;
-    HashMap<Genome, Phenotype> phenotypes = new HashMap<Genome, Phenotype>();
 
-    public Genome[] genes;
+    public Phenotype[] genes;
 
     private double[][] cost;
 
@@ -23,40 +24,53 @@ public class GA2 {
         this.problem = p;
     }
 
+    public static int[] generateShortRoute(Problem problem) {
+        List<Point2D> points = problem.customers.stream().map(x -> x.point).collect(Collectors.toList());
+        var remaining = new ArrayList<Point2D>();
+
+        for (var point : points) {
+            remaining.add(point);
+        }
+
+        List<Integer> indices = new ArrayList<>(points.size());
+        int first = (int) (Math.random() * points.size());
+        var current = points.get(first);
+        remaining.remove(first);
+        indices.add(first);
+
+        while (!remaining.isEmpty()) {
+            Point2D closest = remaining.stream().min(Comparator.comparingDouble(current::distance)).get();
+            remaining.remove(closest);
+            indices.add(points.indexOf(closest));
+            current = closest;
+        }
+
+        int[] result = new int[indices.size()];
+        for (int i = 0; i < result.length; i++) {
+            result[i] = indices.get(i);
+        }
+        return result;
+    }
+
     public Phenotype initiate() {
+        genes = new Phenotype[population];
 
-        cost = calculateCostMatrix();
-
-        genes = new Genome[population];
-        for (int i = 0; i < population; i++) {
-            genes[i] = createNewGenome();
+        for (int i = 0; i < genes.length; i++) {
+            var route = generateShortRoute(problem);
+            var initState = createInitRoutes(route);
+            genes[i] = new Phenotype(initState, problem);
         }
 
         evaluate();
-        return phenotypes.get(genes[0]);
+        return genes[0];
     }
 
     private void evaluate() {
-        Arrays.sort(genes, Comparator.comparingDouble(this::coreEvaluate));
+        Arrays.sort(genes, Comparator.comparingDouble(Phenotype::fitness));
     }
 
 
-
-    private double coreEvaluate(Genome gene) {
-        Phenotype phenotype;
-        if (phenotypes.containsKey(gene)) {
-            phenotype = phenotypes.get(gene);
-        }
-        else{
-            phenotype = new Phenotype(gene, cost, problem);
-            phenotypes.put(gene, phenotype);
-        }
-
-        return phenotype.fitness();
-
-    }
-
-    private Genome createNewGenome() {
+    private List<List<Integer>> createInitRoutes(int[] order) {
         //TODO could be interesting to maybe look through customers in some order
 
         HashMap<Depot, List<MaybeCustomer>> clusters = new HashMap<>();
@@ -65,10 +79,10 @@ public class GA2 {
             clusters.put(d, new ArrayList<>());
         }
 
-        for (int i = 0; i < problem.customers.size(); i++) {
+        for (int i = 0; i < order.length; i++) {
 
             double min = Double.POSITIVE_INFINITY;
-            var current = problem.customers.get(i);
+            var current = problem.customers.get(order[i]);
             Depot minDepot = null;
 
             for (int j = 0; j < problem.depots.size(); j++) {
@@ -83,83 +97,52 @@ public class GA2 {
 
             //TODO also find "close" depots, to add to uncertainty. Maybe also just create a hashmap, mapping customer
             // index to uncertain depots
-            clusters.get(minDepot).add(new MaybeCustomer(current.point, i, null));
+            clusters.get(minDepot).add(new MaybeCustomer(current.point, order[i], null));
         }
 
 
-        var gene = new Genome(problem.depots.size());
+        var result = new ArrayList<List<Integer>>(problem.depots.size());
+        for (int i = 0; i < problem.depots.size(); i++) {
+            result.add(new ArrayList<>());
+        }
 
         for (int i = 0; i < problem.depots.size(); i++) {
             var customers = clusters.get(problem.depots.get(i));
 
             for (var c : customers) {
-                gene.add(i, c.index);
+                result.get(i).add(c.index);
             }
         }
 
-        int sum = 0;
-        for (int i = 0; i < gene.lenght(); i++) {
-            var x = gene.get(i);
-            sum += x.length();
-        }
-
-        if(sum != problem.customers.size())
-            System.out.println("Is: " + sum + ". Should be: " + problem.customers.size());
-
-        return gene;
+        return result;
     }
 
-    private double[][] calculateCostMatrix() {
-        int cSize = problem.customers.size();
-        int size = cSize + problem.depots.size();
-
-        double[][] cost = new double[size][size];
-
-        for (int i = 0; i < problem.customers.size(); i++) {
-            var cPoint = problem.customers.get(i).point;
-
-            for (int j = 0; j < problem.customers.size(); j++) {
-                var distance = cPoint.distance(problem.customers.get(j).point);
-                cost[i][j] = distance;
-                cost[j][i] = distance;
-            }
-
-            for (int j = 0; j < problem.depots.size(); j++) {
-                var distance = cPoint.distance(problem.depots.get(j).point);
-                cost[i][cSize + j] = distance;
-                cost[cSize + j][i] = distance;
-            }
-        }
-
-        return cost;
-    }
-
-
-    public Phenotype generation(){
+    public Phenotype generation() {
 
         int power = 5;
         double sum = 0.0;
-        for (var d : phenotypes.values()) {
-            sum+=Math.pow(100/d.fitness(), power);
+        for (var d : genes) {
+            var fitness = d.fitness()  + ((d).isFeasable() ? 0: 800);
+            sum += Math.pow(100 / fitness, power);
         }
 
-        List<Genome> parents = new ArrayList<>();
+        List<Phenotype> parents = new ArrayList<>();
         double[] probabilityFitness = new double[genes.length];
         double t = 0.0;
         for (int i = 0; i < genes.length; i++) {
-            double fitness = phenotypes.get(genes[i]).fitness();
-            var fp = Math.pow(100/fitness, power)/sum;
-            probabilityFitness[i] = t+=fp;
+            double fitness = genes[i].fitness()  + (genes[i].isFeasable() ? 0: 800);
+            var fp = Math.pow(100 / fitness, power) / sum;
+            probabilityFitness[i] = t += fp;
         }
 
         //System.out.println(Arrays.toString(probabilityFitness));
-
-        while (parents.size() < nParents){
+        parents.add(genes[0]);
+        while (parents.size() < nParents) {
             double r = Math.random();
 
-            for(int i = 0; i < genes.length; i++){
-                if(probabilityFitness[i] > r){
-                    if(!parents.contains(genes[i])){
+            for (int i = 0; i < genes.length; i++) {
+                if (probabilityFitness[i] > r) {
+                    if (!parents.contains(genes[i])) {
                         parents.add(genes[i]);
                     }
                     break;
@@ -170,79 +153,84 @@ public class GA2 {
 //        System.out.println(Arrays.toString(Arrays.stream(genes).map(fitness::get).toArray(Double[]::new)));
 //        System.out.println(Arrays.toString(parents.stream().map(fitness::get).toArray(Double[]::new)));
 
-        while (parents.size() < population){
+        while (parents.size() < population) {
 
-            int pA = (int) (Math.random()*nParents);
-            int pB = (int) (Math.random()*nParents);
-            while (pB == pA){
-                pB = (int) (Math.random()*nParents);
+            int pA = (int) (Math.random() * nParents);
+            int pB = (int) (Math.random() * nParents);
+            while (pB == pA) {
+                pB = (int) (Math.random() * nParents);
             }
 
-            var parentGeneA = phenotypes.get(parents.get(pA)).genome;
-            var childGeneA = parentGeneA.copy();
+            var parentA = parents.get(pA);
+            var parentB = parents.get(pB);
 
-            Phenotype A = new Phenotype(childGeneA, cost,  problem), B = new Phenotype(phenotypes.get(parents.get(pA)).genome.copy(), cost, problem);
+            var A = parentA.copy();
+            var B = parentB.copy();
+
 
             A.Reproduce(B);
 
-               parents.add(A.genome);
-               phenotypes.put(A.genome, A);
-                if(parents.size()<population){
-                    parents.add(B.genome);
-                    phenotypes.put(B.genome, B);
-                }
+
+            for (var a : A.FML) {
+                a.removeIf(List::isEmpty);
+            }
+            for (var a : B.FML) {
+                a.removeIf(List::isEmpty);
+            }
+
+            //if (!isFeasable(A))
+            A.makeFeseable();
+
+            parents.add(A);
+            if (parents.size() < population) {
+                //    if (isFeasable(B))
+                parents.add(B);
+            }
 
         }
 
-        int nMutations = (int) Math.round(((double)population)*mutationRate);
+        int nMutations = (int) Math.round(((double) population) * mutationRate);
 
 
         HashSet<Integer> taken = new HashSet<>();
-        for(int i = 0; i < nMutations; i++){
-            int r = (int) (Math.random() *(population - nParents));
-            while (taken.contains(r)){
-                r = (int) (Math.random() *(population - nParents));
+        for (int i = 0; i < nMutations; i++) {
+            int r = (int) (Math.random() * (population - nParents)) + nParents;
+            while (taken.contains(r)) {
+                r = (int) (Math.random() * (population - nParents)) + nParents;
             }
             taken.add(r);
-            mutate(phenotypes.get(parents.get(r)));
+            mutate(parents.get(r));
         }
 
 
-        for(int i = 0; i < population; i++){
-            genes[i] = parents.get(i);
+        for (int i = 0; i < population; i++) {
+            genes = parents.toArray(Phenotype[]::new);
         }
 
         evaluate();
-        return phenotypes.get(genes[0]);
+        return genes[0];
     }
 
     private void mutate(Phenotype x) {
 
-        for(int i = 0; i< x.FML.size(); i++){
+        for (int i = 0; i < x.FML.size(); i++) {
             var d = x.FML.get(i);
-
-            if(d.removeIf(v -> v.size() == 0)){
-                x.updateGenome(i);
-            }
-
         }
 
-        int depIndex = (int) (Math.random()*x.FML.size());
+        int depIndex = (int) (Math.random() * x.FML.size());
 
         var depot = x.FML.get(depIndex);
 
-        int vIndex = (int) (Math.random()*depot.size());
+        int vIndex = (int) (Math.random() * depot.size());
 
         var vehicle = depot.get(vIndex);
 
-        int cIndex = (int) (Math.random()*vehicle.size());
+        int cIndex = (int) (Math.random() * vehicle.size());
         int customer = vehicle.get(cIndex);
 
         vehicle.remove(Integer.valueOf(customer));
 
         x.insertCheapest(depIndex, depot, customer);
-
-        x.updateGenome(depIndex);
     }
 
 

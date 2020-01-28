@@ -1,4 +1,4 @@
-package Phenotype;
+package Types;
 
 import Stuff.Depot;
 import javafx.geometry.Point2D;

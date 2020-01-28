@@ -1,5 +1,6 @@
 package Stuff;
 
+import Types.Phenotype1;
 import javafx.geometry.Point2D;
 
 import java.util.*;
@@ -8,31 +9,61 @@ import java.util.stream.Collectors;
 public class GA {
 
     public final Problem problem;
+    private final double[][] cost;
 
-    int population = 1000;
-    int nParents = 50;
-    double mutationRate = 0.1;
+    int population = 500;
+    int nParents = 20;
+    double mutationRate = 0.3;
 
     public int[][] genes;
 
     HashMap<int[], Double> fitness = new HashMap<>();
+    HashMap<int[], Phenotype1> phenotypes = new HashMap<>();
 
 
     public GA(Problem p){
         this.problem = p;
+        cost = calculateCostMatrix();
     }
 
-    public void initiate(){
+    public Phenotype1 initiate(){
         genes = new int[population][];
 
         for(int x = 0; x < genes.length; x++){
-            int[] gene = generateRandomRoute();
+            int[] gene = generateShortRoute(problem);
             genes[x] = gene;
         }
 
         fitness.clear();
         evaluate();
+        return phenotypes.get(genes[0]);
     }
+
+    private double[][] calculateCostMatrix() {
+        int cSize = problem.customers.size();
+        int size = cSize + problem.depots.size();
+
+        double[][] cost = new double[size][size];
+
+        for (int i = 0; i < problem.customers.size(); i++) {
+            var cPoint = problem.customers.get(i).point;
+
+            for (int j = 0; j < problem.customers.size(); j++) {
+                var distance = cPoint.distance(problem.customers.get(j).point);
+                cost[i][j] = distance;
+                cost[j][i] = distance;
+            }
+
+            for (int j = 0; j < problem.depots.size(); j++) {
+                var distance = cPoint.distance(problem.depots.get(j).point);
+                cost[i][cSize + j] = distance;
+                cost[cSize + j][i] = distance;
+            }
+        }
+
+        return cost;
+    }
+
 
     private int[] generateRandomRoute() {
         var gene = new int[problem.customers.size()];
@@ -80,9 +111,9 @@ public class GA {
         Arrays.sort(genes, Comparator.comparingDouble(this::evaluate));
     }
 
-    public void generation(){
+    public Phenotype1 generation(){
 
-        int power = 5;
+        int power = 4;
         double sum = 0.0;
         for (Double d : fitness.values()) {
             sum+=Math.pow(1/d, power);
@@ -154,9 +185,12 @@ public class GA {
         for(int i = 0; i < population; i++){
             genes[i] = parents.get(i);
         }
-
+        phenotypes.clear();
+        fitness.clear();
         evaluate();
-        System.out.println(fitness.get(genes[0]));
+        //System.out.println(fitness.get(genes[0]));
+
+        return phenotypes.get(genes[0]);
     }
 
     private void insertMutation(int[] gene) {
@@ -207,27 +241,21 @@ public class GA {
         if(fitness.containsKey(x)){
             return fitness.get(x);
         }
-        var value = coreEvaluate(x);
+        var value = getPhenotype(x).fitness();
         fitness.put(x, value);
 
         return value;
     }
 
 
-    private Double coreEvaluate(int[] gene) {
-        double sum = 0;
-        var d = problem.depots;
-        var c = problem.customers;
-
-        sum+= d.get(0).point.distance(c.get(gene[0]).point);
-
-        for(int i = 1; i < gene.length; i++){
-            sum += c.get(gene[i]).point.distance(c.get(gene[i-1]).point);
+    private Phenotype1 getPhenotype(int[] gene) {
+        if(phenotypes.containsKey(gene)){
+           return phenotypes.get(gene);
         }
 
-        sum+= d.get(0).point.distance(c.get(gene[gene.length-1]).point);
-
-        return sum;
+        var p = new Phenotype1(gene, cost, problem);
+        phenotypes.put(gene, p);
+        return p;
     }
 
 }

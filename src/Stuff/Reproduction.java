@@ -1,7 +1,5 @@
 package Stuff;
 
-import Phenotype.Phenotype;
-
 import java.util.Arrays;
 
 public class Reproduction {

@@ -4,6 +4,8 @@ import Stuff.Reproduction;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 
+import java.util.Arrays;
+
 public class MyTests {
 
 
@@ -28,5 +30,15 @@ public class MyTests {
         int[] expected = new int[]{1, 2, 3, 7, 6, 5, 4, 8, 9};
 
         Assertions.assertArrayEquals(expected, actual);
+    }
+
+    @Test
+    public void a(){
+        var a = new int[]{1, 2, 3, 4, 5};
+        var b = Arrays.asList(a);
+
+        a[3] = 100;
+
+        Assertions.assertNotEquals(a[3], b.get(3));
     }
 }

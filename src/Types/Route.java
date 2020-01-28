@@ -1,6 +1,4 @@
-package Phenotype;
-
-import javafx.geometry.Point2D;
+package Types;
 
 import java.util.ArrayList;
 

@@ -1,18 +1,16 @@
-package Phenotype;
+package Types;
 
 import Stuff.Customer;
 import Stuff.Depot;
-import Stuff.Genome;
 import Stuff.Problem;
 
 
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 
 public class Phenotype {
-
-    public Genome genome;
     private final Problem problem;
     private final Customer[] customers;
     private final Depot[] depots;
@@ -23,28 +21,33 @@ public class Phenotype {
     public List<List<List<Integer>>> FML;
     private double fitness = -1;
 
-    public Phenotype(Genome genome, double[][] cost, Problem problem) {
-        this.genome = genome;
-        this.cost = cost;
+    public Phenotype(List<List<Integer>> initRoute, Problem problem) {
+        this.cost = problem.cost;
         this.customerCount = problem.customers.size();
         this.problem = problem;
         this.customers = problem.customers.toArray(Stuff.Customer[]::new);
         this.depots = problem.depots.toArray(Stuff.Depot[]::new);
 
-        convert();
+        initialize(initRoute);
     }
 
-    private void convert() {
+    public Phenotype(Problem problem, List<List<List<Integer>>> initFML) {
+        this.cost = problem.cost;
+        this.customerCount = problem.customers.size();
+        this.problem = problem;
+        this.customers = problem.customers.toArray(Stuff.Customer[]::new);
+        this.depots = problem.depots.toArray(Stuff.Depot[]::new);
+        
+        this.FML = initFML;
+    }
+
+    private void initialize(List<List<Integer>> initRoute) {
         var routeCost = new HashMap<List<Integer>, Double>();
         var routeLoad = new HashMap<List<Integer>, Double>();
 
-        List<List<List<Integer>>> fml = phase1(routeCost, routeLoad);
+        List<List<List<Integer>>> fml = phase1(initRoute, routeCost, routeLoad);
 
         int sum = getSum(fml);
-
-        if(sum != genome.sum()){
-            int a = 2;
-        }
 
         if(sum != problem.customers.size())
              System.out.println("Is: " + sum + ". Should be: " + problem.customers.size() + " in phenotype");
@@ -120,12 +123,12 @@ public class Phenotype {
         return originalCost;
     }
 
-    private List<List<List<Integer>>> phase1(HashMap<List<Integer>, Double> routeCost, HashMap<List<Integer>, Double> routeLoad) {
+    private List<List<List<Integer>>> phase1(List<List<Integer>> initRoute, HashMap<List<Integer>, Double> routeCost, HashMap<List<Integer>, Double> routeLoad) {
         List<List<List<Integer>>> fml = new ArrayList<>();
 
-        for (int i = 0; i < genome.lenght(); i++) {
+        for (int i = 0; i < initRoute.size(); i++) {
 
-            var chromosome = genome.get(i);
+            var chromosome = initRoute.get(i);
 
             int depIndex = customerCount + i;
 
@@ -146,7 +149,7 @@ public class Phenotype {
             currLoad += customers[currCustomer].demand;
             int prevCustomer = currCustomer;
 
-            for (int j = 1; j < chromosome.length(); j++) {
+            for (int j = 1; j < chromosome.size(); j++) {
                 currCustomer = chromosome.get(j);
                 var stepCost = cost[prevCustomer][currCustomer];
                 var load = customers[currCustomer].demand;
@@ -179,7 +182,7 @@ public class Phenotype {
 
 
     public double fitness() {
-        if (fitness == -1) {
+       // if (fitness == -1) {
             double sum = 0;
             //for (double value : routeCost.values()) {
               //  sum += value;
@@ -191,7 +194,7 @@ public class Phenotype {
                 }
             }
             fitness = sum;
-        }
+            //}
 
         return fitness;
     }
@@ -244,15 +247,7 @@ public class Phenotype {
             b.insertCheapest(depot, depotB, newC);
         }
         var sum3 = getSum(b.FML);
-
-        if(sum3 != sum){
-            int stop = 0;
-        }
-
-
-
-        updateGenome(depot);
-        b.updateGenome(depot);
+        
         fitness = -1;
         b.fitness = -1;
 
@@ -268,31 +263,76 @@ public class Phenotype {
         return sum;
     }
 
-    public void updateGenome(int depot) {
-        if(genome.sum() != customerCount)
-            System.out.println("update genem");
 
-        for(int i = 0; i < FML.size(); i++){
-            var depList = FML.get(i);
-            var gene = new ArrayList<Integer>();
+    public void insertCheapest2(int depot, List<List<Integer>> routes, int newC) {
+        List<Integer> route = null;
+        int index = -1;
+        double insertionCost = Double.POSITIVE_INFINITY;
 
-            for (var route : depList) {
-                gene.addAll(route);
+        for(var vehicle: FML.get(depot)){
+            if(getRouteLoad(vehicle) + customers[newC].demand > depots[depot].maxLoad)
+                continue;
+
+            int closestC = vehicle.stream().min(Comparator.comparingDouble(x -> cost[x][newC])).get();
+            int curIndex = vehicle.indexOf(closestC);
+
+            var newCostPrev = insertionCost(depot, curIndex, newC, vehicle);
+            var newCostNext = insertionCost(depot, curIndex+1, newC, vehicle);
+
+            double newCost = newCostNext;
+            if(newCostPrev < newCostNext){
+                newCost = newCostPrev;
+                curIndex+=1;
             }
 
-            genome.get(i).update(gene);
+            if(getRouteCost(vehicle, depot) + newCost > depots[depot].maxRoute){
+                continue;
+            }
 
+            if(newCost<insertionCost){
+                index = curIndex;
+                insertionCost = newCost;
+                route = vehicle;
+            }
         }
 
-        if(genome.sum() != customerCount)
-            System.out.println("update genem");
+        if(index == -1){
+
+        }
+        else{
+            route.add(index, newC);
+        }
     }
+
+    private double insertionCost(int depot, int i, int newC, List<Integer> vehicle) {
+        double resultCost = 0.0;
+        if(i == 0){
+            resultCost -= cost[depot + customerCount][vehicle.get(0)];
+            resultCost += cost[newC][vehicle.get(0)];
+            return resultCost;
+        }
+        if(i == vehicle.size()){
+            resultCost -= cost[depot + customerCount][vehicle.get(vehicle.size() - 1)];
+            resultCost += cost[newC][vehicle.get(0)];
+            return resultCost;
+        }
+
+        resultCost -= cost[vehicle.get(i)][vehicle.get(i-1)];
+        resultCost += cost[newC][vehicle.get(i-1)];
+        resultCost += cost[newC][vehicle.get(i)];
+
+        return resultCost;
+    }
+
 
     public void insertCheapest(int depot, List<List<Integer>> routes, int newC) {
 
         int minRoute = -1;
         int minI = -1;
         double minCost = Double.POSITIVE_INFINITY;
+        var maxDemand = depots[depot].maxRoute;
+        if(maxDemand == 0)
+            maxDemand = Integer.MAX_VALUE;
 
         for (int i = 0; i < routes.size(); i++) {
             var currRoute = routes.get(i);
@@ -306,7 +346,7 @@ public class Phenotype {
             for (int index = 0; index < currRoute.size(); index++) {
                 var costOfInsertion = costOfInsertion(currRoute, depot, newC, index);
 
-                if(currCost + costOfInsertion <= depots[depot].maxRoute){
+                if(currCost + costOfInsertion <= maxDemand){
                     if(costOfInsertion < minCost){
                         minRoute = i;
                         minCost = costOfInsertion;
@@ -347,7 +387,7 @@ public class Phenotype {
 
         c += cost[depot + customerCount][currRoute.get(0)];
 
-        for(int i = 1; i < currRoute.size()-2; i++){
+        for(int i = 1; i < currRoute.size(); i++){
             c+= cost[currRoute.get(i-1)][currRoute.get(i)];
         }
 
@@ -384,5 +424,35 @@ public class Phenotype {
         }
 
         return 2*cost[depot + customerCount][newC];
+    }
+
+    public Phenotype copy() {
+
+        List<List<List<Integer>>> newFML = new ArrayList<>(FML.size());
+        for(var a:FML){
+            var x = new ArrayList<List<Integer>>();
+            newFML.add(x);
+            for(var b : a){
+                var y = new ArrayList<Integer>();
+                x.add(y);
+                y.addAll(b);
+            }
+        }
+        
+        return new Phenotype(problem, newFML);
+    }
+
+    public void makeFeseable() {
+
+    }
+
+    public boolean isFeasable() {
+        for (int i = 0; i < FML.size(); i++) {
+            var max = depots[i].maxCarCount;
+            if (FML.get(i).size() > max)
+                return false;
+        }
+
+        return true;
     }
 }

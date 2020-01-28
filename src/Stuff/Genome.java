@@ -1,11 +1,5 @@
 package Stuff;
 
-import Phenotype.MaybeCustomer;
-
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
-
 public class Genome {
     private final Chromosome[] chromosomes;
 
