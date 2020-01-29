@@ -95,7 +95,6 @@ public class Controller {
         var isFeasable = new Phenotype(problem, currentPath).isFeasable();
 
         System.out.println(isFeasable);
-
     }
 
     private void initiateThreads() {
