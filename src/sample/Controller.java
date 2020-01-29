@@ -5,8 +5,6 @@ import Types.Phenotype;
 import Stuff.*;
 import javafx.animation.AnimationTimer;
 import javafx.application.Platform;
-import javafx.beans.value.ChangeListener;
-import javafx.beans.value.ObservableValue;
 import javafx.collections.FXCollections;
 import javafx.event.ActionEvent;
 import javafx.event.Event;
@@ -70,6 +68,7 @@ public class Controller {
     private int[] progress;
     private double currentBestScore;
     private Thread mainThread;
+    private boolean runIndefinetly;
 
     public Controller() {
         timer = new AnimationTimer() {
@@ -95,10 +94,11 @@ public class Controller {
 
         var isFeasable = new Phenotype(problem, currentPath).isFeasable();
 
+        System.out.println(isFeasable);
 
     }
 
-    private void initiateThread() {
+    private void initiateThreads() {
         int nThreads;
         var text = threadsField.getText();
         nThreads = text.isBlank() ? threadCount : Integer.parseInt(text);
@@ -124,11 +124,15 @@ public class Controller {
                 var ga = new GA2(problem, population, nParents, mutationRate);
                 ga.initiate();
                 Phenotype a = null;
+                int generation = 0;
                 while (progress[finalT]++ < iterations) {
+
                     a = ga.generation();
-                    int finalI = progress[finalT];
+                    int finalI = generation++;
                     double finalFitnes = a.fitness();
                     if (finalFitnes < score) {
+                        if(runIndefinetly)
+                            progress[finalT] = 0;
                         score = a.fitness();
                         var finalPath = a.getPath();
                         Platform.runLater(() -> {
@@ -197,13 +201,9 @@ public class Controller {
         }
 
         progressBar.setProgress(0);
-        iterationsField.textProperty().addListener(new ChangeListener<String>() {
-            @Override
-            public void changed(ObservableValue<? extends String> observable, String oldValue,
-                                String newValue) {
-                if (!newValue.matches("\\d*")) {
-                    iterationsField.setText(newValue.replaceAll("[^\\d]", ""));
-                }
+        iterationsField.textProperty().addListener((observable, oldValue, newValue) -> {
+            if (!newValue.matches("\\d*")) {
+                iterationsField.setText(newValue.replaceAll("[^\\d]", ""));
             }
         });
     }
@@ -259,16 +259,22 @@ public class Controller {
 
     private void buttonClicked(ActionEvent actionEvent) {
         settings.setDisable(true);
-        iterations = Integer.parseInt(iterationsField.getText());
 
-        System.out.println("Initiating...");
-        System.out.println("initiating finished");
+        var text = iterationsField.getText();
+        if(text.isBlank()){
+            iterations = 500;
+            runIndefinetly = true;
+        }else{
+            iterations = Integer.parseInt(iterationsField.getText());
+            runIndefinetly = false;
+        }
+
         //drawPaths(result);
 
 //        drawBoard();
 
 
-        initiateThread();
+        initiateThreads();
 
         mainThread.start();
         timer.start();
@@ -316,7 +322,6 @@ public class Controller {
 
 
         }
-        System.out.println(sum);
 
 //        gc.setStroke(Color.RED);
 //        for(var x: result.FML){
