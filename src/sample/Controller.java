@@ -120,7 +120,7 @@ public class Controller {
             var thread = new Thread(() -> {
 
                 double score = Double.POSITIVE_INFINITY;
-                var ga = new GA2(problem, population, nParents, mutationRate);
+                var ga = new GA(problem, population, nParents, mutationRate);
                 ga.initiate();
                 Phenotype a = null;
                 int generation = 0;
@@ -289,7 +289,7 @@ public class Controller {
         int color = 0;
         for (int depoI = 0; depoI < FML.size(); depoI++) {
 
-            var depot = d.get(depoI).point;
+            var depot = d[depoI].point;
             var current = FML.get(depoI);
 
             for (int car = 0; car < current.size(); car++) {
@@ -302,18 +302,18 @@ public class Controller {
                 if (currCar.size() == 0)
                     continue;
 
-                var start = c.get(currCar.get(0)).point;
+                var start = c[currCar.get(0)].point;
                 gc.strokeLine(ofsetX + depot.getX(), ofsetY + depot.getY(), ofsetX + start.getX(), ofsetY + start.getY());
                 sum += new Point2D(start.getX(), start.getY()).distance(new Point2D(depot.getX(), depot.getY()));
                 for (int i = 1; i < currCar.size(); i++) {
-                    var pointA = c.get(currCar.get(i)).point;
-                    var pointB = c.get(currCar.get(i - 1)).point;
+                    var pointA = c[currCar.get(i)].point;
+                    var pointB = c[currCar.get(i - 1)].point;
                     gc.strokeLine(ofsetX + pointA.getX(), ofsetY + pointA.getY(), ofsetX + pointB.getX(), ofsetY + pointB.getY());
                     sum += new Point2D(pointA.getX(), pointA.getY()).distance(new Point2D(pointB.getX(), pointB.getY()));
                 }
 
-                var pointA = c.get(currCar.get(currCar.size() - 1)).point;
-                var pointB = d.get(depoI).point;
+                var pointA = c[currCar.get(currCar.size() - 1)].point;
+                var pointB = d[depoI].point;
                 sum += new Point2D(pointA.getX(), pointA.getY()).distance(new Point2D(pointB.getX(), pointB.getY()));
                 gc.strokeLine(ofsetX + pointA.getX(), ofsetY + pointA.getY(), ofsetX + pointB.getX(), ofsetY + pointB.getY());
 
@@ -321,17 +321,6 @@ public class Controller {
 
 
         }
-
-//        gc.setStroke(Color.RED);
-//        for(var x: result.FML){
-//            for(var y: x){
-//                for(var z: y){
-//                    var pointA = c.get(z).point;
-//                    var pointB = d.get(0).point;
-//                    gc.strokeLine(pointA.getX(), pointA.getY(), pointB.getX(), pointB.getY());
-//                }
-//            }
-//        }
     }
 
     private void drawBoard() {

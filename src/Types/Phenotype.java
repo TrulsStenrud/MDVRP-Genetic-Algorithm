@@ -24,20 +24,20 @@ public class Phenotype {
 
     public Phenotype(List<List<Integer>> initRoute, Problem problem) {
         this.cost = problem.cost;
-        this.customerCount = problem.customers.size();
+        this.customerCount = problem.customers.length;
         this.problem = problem;
-        this.customers = problem.customers.toArray(Stuff.Customer[]::new);
-        this.depots = problem.depots.toArray(Stuff.Depot[]::new);
+        this.customers = problem.customers;
+        this.depots = problem.depots;
 
         initialize(initRoute);
     }
 
     public Phenotype(Problem problem, List<List<List<Integer>>> initFML) {
         this.cost = problem.cost;
-        this.customerCount = problem.customers.size();
+        this.customerCount = problem.customers.length;
         this.problem = problem;
-        this.customers = problem.customers.toArray(Stuff.Customer[]::new);
-        this.depots = problem.depots.toArray(Stuff.Depot[]::new);
+        this.customers = problem.customers;
+        this.depots = problem.depots;
 
         this.FML = initFML;
     }
@@ -50,8 +50,8 @@ public class Phenotype {
 
         int sum = getSum(fml);
 
-        if(sum != problem.customers.size())
-             System.out.println("Is: " + sum + ". Should be: " + problem.customers.size() + " in phenotype");
+        if(sum != problem.customers.length)
+             System.out.println("Is: " + sum + ". Should be: " + problem.customers.length + " in phenotype");
 
         phase2(fml, routeCost, routeLoad);
         this.FML = fml;
