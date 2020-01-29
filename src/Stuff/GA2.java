@@ -11,9 +11,9 @@ public class GA2 {
 
     public final Problem problem;
 
-    int population = 1000;
-    int nParents = 50;
-    double mutationRate = 0.1;
+    int population = 200;
+    int nParents = 10;
+    double mutationRate = 0.2;
 
     public Phenotype[] genes;
 
@@ -122,15 +122,25 @@ public class GA2 {
         int power = 5;
         double sum = 0.0;
         for (var d : genes) {
-            var fitness = d.fitness()  + ((d).isFeasable() ? 0: 800);
+            var fitness = d.fitness() + ((d).isFeasable() ? 0 : 800);
             sum += Math.pow(100 / fitness, power);
         }
 
         List<Phenotype> parents = new ArrayList<>();
         double[] probabilityFitness = new double[genes.length];
         double t = 0.0;
+        boolean atLeastOnewFeasable = false;
         for (int i = 0; i < genes.length; i++) {
-            double fitness = genes[i].fitness()  + (genes[i].isFeasable() ? 0: 800);
+            var isFeasable = genes[i].isFeasable();
+
+            if (!atLeastOnewFeasable)
+                if (isFeasable) {
+                    if (i != 0)
+                        parents.add(genes[i]);
+                    atLeastOnewFeasable = true;
+                }
+
+            double fitness = genes[i].fitness() + (isFeasable ? 0 : 800);
             var fp = Math.pow(100 / fitness, power) / sum;
             probabilityFitness[i] = t += fp;
         }
@@ -167,16 +177,8 @@ public class GA2 {
             var A = parentA.copy();
             var B = parentB.copy();
 
-
             A.Reproduce(B);
 
-
-            for (var a : A.FML) {
-                a.removeIf(List::isEmpty);
-            }
-            for (var a : B.FML) {
-                a.removeIf(List::isEmpty);
-            }
 
             //if (!isFeasable(A))
             A.makeFeseable();
@@ -199,7 +201,10 @@ public class GA2 {
                 r = (int) (Math.random() * (population - nParents)) + nParents;
             }
             taken.add(r);
+
+
             mutate(parents.get(r));
+
         }
 
 
@@ -229,6 +234,8 @@ public class GA2 {
         int customer = vehicle.get(cIndex);
 
         vehicle.remove(Integer.valueOf(customer));
+        if (vehicle.size() == 0)
+            depot.remove(vIndex);
 
         x.insertCheapest(depIndex, depot, customer);
     }

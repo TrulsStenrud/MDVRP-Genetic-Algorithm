@@ -3,7 +3,6 @@ package sample;
 import DataFiles.FileParser;
 import Types.Phenotype;
 import Stuff.*;
-import Types.Phenotype1;
 import javafx.animation.AnimationTimer;
 import javafx.application.Platform;
 import javafx.collections.FXCollections;
@@ -23,8 +22,19 @@ import java.util.Arrays;
 import java.util.List;
 
 public class Controller {
+    public Color[] colors = new Color[]{
+            Color.RED,
+            Color.YELLOW,
+            Color.BLUE,
+            Color.GREEN,
+            Color.AQUA,
+            Color.BLACK,
+            Color.INDIGO,
+            Color.ROYALBLUE
+    };
+
     public Canvas canvas;
-    public ComboBox taskChooser;
+    public ComboBox<String> taskChooser;
     public Button startButton;
     public LineChart chart;
     private GraphicsContext gc = null;
@@ -34,10 +44,26 @@ public class Controller {
     private XYChart.Series s;
 
     private AnimationTimer timer;
-    private Thread thread;
+    private Thread thread = new Thread();
     private double ofsetX;
     private double ofsetY;
     private double currentScaling = 1;
+
+    private List<List<List<Integer>>> currentPath = null;
+    public List<List<List<Integer>>> newPath = null;
+
+    public Controller(){
+        timer = new AnimationTimer() {
+            @Override
+            public void handle(long l) {
+                if(newPath != currentPath){
+                    currentPath = newPath;
+                    drawBoard();
+                }
+            }
+        };
+
+    }
 
     @FXML
     public void initialize() {
@@ -59,12 +85,7 @@ public class Controller {
         }
 
 
-        timer = new AnimationTimer() {
-            @Override
-            public void handle(long l) {
-                drawBoard();
-            }
-        };
+
     }
 
     private void onTaskCHoosen(Event event) {
@@ -72,12 +93,23 @@ public class Controller {
     }
 
     private void initiateChoosenTask() {
-        var task = (String) taskChooser.getValue();
+        reset();
+        var task = taskChooser.getValue();
         problem = FileParser.readParseFile(task);
         ga = new GA2(problem);
         calculateOffsetsAndScaling();
         drawBoard();
         counter = 0;
+    }
+
+    private void reset(){
+        if(thread.isAlive()){
+            System.out.println("Should not reset, wait for thread");
+        }
+        timer.stop();
+        s.getData().clear();
+        currentPath = null;
+        newPath = null;
     }
 
     private void calculateOffsetsAndScaling() {
@@ -110,6 +142,7 @@ public class Controller {
 
     private void buttonClicked(ActionEvent actionEvent) {
         startButton.setDisable(true);
+        taskChooser.setDisable(true);
         System.out.println("Initiating...");
         var result = ga.initiate();
         System.out.println("initiating finished");
@@ -117,32 +150,34 @@ public class Controller {
         counter++;
 
         drawBoard();
-        //drawPaths(result);
 
 
-        thread = new Thread() {
-            public void run() {
-
-                int i = 0;
-                double score = Double.POSITIVE_INFINITY;
-                Phenotype a = null;
-                while (i++ < 100) {
-                    a = ga.generation();
-                    int finalI = i;
-                    double finalFitnes = a.fitness();
-                    if (finalFitnes < score) {
-                        score = a.fitness();
-                        Platform.runLater(() -> s.getData().add(new XYChart.Data(finalI, finalFitnes)));
-                    }
-
+        thread = new Thread(() -> {
+            int i = 0;
+            double score = Double.POSITIVE_INFINITY;
+            Phenotype a = null;
+            while (i++ < 1000) {
+                a = ga.generation();
+                int finalI = i;
+                double finalFitnes = a.fitness();
+                if (finalFitnes < score) {
+                    score = a.fitness();
+                    Platform.runLater(() -> s.getData().add(new XYChart.Data(finalI, finalFitnes)));
+                    newPath = a.getPath();
                 }
-                timer.stop();
-                var b = a;
-                Platform.runLater(() -> drawPaths(b.FML));
-                System.out.println("finished: " + b.fitness());
-                System.out.println(b.isFeasable());
+
             }
-        };
+            timer.stop();
+            var b = a;
+            Platform.runLater(() -> {
+                startButton.setDisable(false);
+                taskChooser.setDisable(false);
+                currentPath = b.FML;
+                drawBoard();
+            });
+            System.out.println("finished: " + b.fitness());
+            System.out.println(b.isFeasable());
+        });
 
         thread.start();
         timer.start();
@@ -156,13 +191,16 @@ public class Controller {
         var c = ga.problem.customers;
 
         var sum = 0.0;
-
+        int color = 0;
         for (int depoI = 0; depoI < FML.size(); depoI++) {
 
             var depot = d.get(depoI).point;
             var current = FML.get(depoI);
 
             for (int car = 0; car < current.size(); car++) {
+
+                gc.setStroke(colors[color%colors.length]);
+                color++;
 
                 var currCar = current.get(car);
 
@@ -204,31 +242,11 @@ public class Controller {
 
     private void drawBoard() {
         gc.clearRect(0, 0, 1000, 1000);
+        if(currentPath != null){
+            drawPaths(currentPath);
+        }
         drawDots();
         drawDepos();
-        //drawLines(ga.genes[0], Color.BLACK);
-    }
-
-    private void drawLines(int[] gene, Color color) {
-        gc.setStroke(color);
-        var d = ga.problem.depots;
-        var c = ga.problem.customers;
-
-
-        var depot = d.get(0).point;
-        var start = c.get(gene[0]).point;
-        gc.strokeLine(ofsetX + depot.getX(), ofsetY + depot.getY(), ofsetX + start.getX(), ofsetY + start.getY());
-
-        for (int i = 1; i < gene.length; i++) {
-            var pointA = c.get(gene[i]).point;
-            var pointB = c.get(gene[i - 1]).point;
-            gc.strokeLine(ofsetX + pointA.getX(), ofsetY + pointA.getY(), ofsetX + pointB.getX(), ofsetY + pointB.getY());
-        }
-
-        var pointA = c.get(gene[gene.length - 1]).point;
-        var pointB = d.get(0).point;
-        gc.strokeLine(ofsetX + pointA.getX(), ofsetY + pointA.getY(), ofsetX + pointB.getX(), ofsetY + pointB.getY());
-
     }
 
     private void drawDepos() {
