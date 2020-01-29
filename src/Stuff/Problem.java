@@ -21,7 +21,7 @@ public class Problem {
 
     private List<List<Integer>> calculateClosestDepos() {
         var result = new ArrayList<List<Integer>>();
-
+        var max = depots[0].maxRoute == 0 ? Double.POSITIVE_INFINITY: depots[0].maxRoute;
         var t = new int[depots.length];
         for(int i = 0 ; i < t.length; i++){
             t[i] = i;
@@ -46,7 +46,7 @@ public class Problem {
                 if (d == minIndex)
                     continue;
 
-                if((cost[c][d + customers.length] - min)/ min <= bound){
+                if(cost[c][d + customers.length] < max/2 && (cost[c][d + customers.length] - min)/ min <= bound){
                     current.add(d);
                 }
             }

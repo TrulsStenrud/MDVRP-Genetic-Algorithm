@@ -73,45 +73,14 @@ public class GA {
     private List<List<Integer>> createInitRoutes(int[] route) {
         //TODO could be interesting to maybe look through customers in some order
 
-        HashMap<Depot, List<Integer>> clusters = new HashMap<>();
+        var result = new ArrayList<List<Integer>>();
 
         for (Depot d : problem.depots) {
-            clusters.put(d, new ArrayList<>());
-        }
-
-        for (int i = 0; i < route.length; i++) {
-
-            double min = Double.POSITIVE_INFINITY;
-            var current = problem.customers[route[i]];
-            Depot minDepot = null;
-
-            for (int j = 0; j < problem.depots.length; j++) {
-                var d = problem.depots[j];
-                var distance = d.point.distance(current.point);
-
-                if (distance < min) {
-                    min = distance;
-                    minDepot = d;
-                }
-            }
-
-            //TODO also find "close" depots, to add to uncertainty. Maybe also just create a hashmap, mapping customer
-            // index to uncertain depots
-            clusters.get(minDepot).add(route[i]);
-        }
-
-
-        var result = new ArrayList<List<Integer>>(problem.depots.length);
-        for (int i = 0; i < problem.depots.length; i++) {
             result.add(new ArrayList<>());
         }
 
-        for (int i = 0; i < problem.depots.length; i++) {
-            var customers = clusters.get(problem.depots[i]);
-
-            for (var c : customers) {
-                result.get(i).add(c);
-            }
+        for (var c : route) {
+            result.get(problem.closestDepots.get(c).get(0)).add(c);
         }
 
         return result;
@@ -122,7 +91,7 @@ public class GA {
         int power = 4;
         double sum = 0.0;
         for (var d : genes) {
-            var fitness = d.fitness() + ((d).isFeasable() ? 0 : 800);
+            var fitness = d.fitness() + ((d).correctCarCount() ? 0 : 800);
             sum += Math.pow(1000 / fitness, power);
         }
 
@@ -131,7 +100,7 @@ public class GA {
         double t = 0.0;
         boolean atLeastOnewFeasable = false;
         for (int i = 0; i < genes.length; i++) {
-            var isFeasable = genes[i].isFeasable();
+            var isFeasable = genes[i].correctCarCount();
 
             if (!atLeastOnewFeasable)
                 if (isFeasable) {
@@ -179,10 +148,6 @@ public class GA {
 
             A.Reproduce(B);
 
-
-            //if (!isFeasable(A))
-            A.makeFeseable();
-
             parents.add(A);
             if (parents.size() < population) {
                 //    if (isFeasable(B))
@@ -203,19 +168,12 @@ public class GA {
             taken.add(r);
 
             var x = Math.random();
-            if(x < 0.5){
+            if (x < 0.6) {
                 mutate(parents.get(r));
-            }
-            else if(x < 1){
-                inverseMutate(parents.get(r));
-            }
-            else{
+            } else {
                 interDepotMutation(parents.get(r));
             }
-
-
         }
-
 
         for (int i = 0; i < population; i++) {
             genes = parents.toArray(Phenotype[]::new);
@@ -226,48 +184,59 @@ public class GA {
     }
 
     private void interDepotMutation(Phenotype phenotype) {
-        int depot = (int) (Math.random()*phenotype.FML.size());
+        var a = new ArrayList<Integer>();
+
+        for (int i = 0; i < problem.depots.length; i++) {
+            if (problem.depots[i].maxCarCount < phenotype.FML.get(i).size()) {
+                a.add(i);
+            }
+        }
+
+        int depot;
+
+        if (a.isEmpty()) {
+            depot = (int) (Math.random() * phenotype.FML.size());
+        } else {
+            int r = (int) (Math.random() * a.size());
+            depot = a.get(r);
+        }
+
 
         var d = phenotype.FML.get(depot);
 
-        int v = (int) (Math.random()*d.size());
+        int v = (int) (Math.random() * d.size());
 
         var vehicle = d.get(v);
 
-        double bound = 2;
         var swapable = new ArrayList<Integer>();
-        int customerCount = problem.customers.length;
-        for(var c : vehicle){
-            var min = problem.cost[c][depot + customerCount];
 
-            for(int i = 0; i < problem.depots.length; i++){
-                if(i != depot){
-                   // if((problem.cost[c][i + customerCount] - min) / )
-                }
+        for (var c : vehicle) {
+            if (problem.closestDepots.get(c).size() > 1)
+                swapable.add(c);
+        }
+
+        if (!swapable.isEmpty()) {
+            int r = (int) (Math.random() * swapable.size());
+
+            int c = swapable.get(r);
+
+            vehicle.remove(Integer.valueOf(c));
+
+            if (vehicle.isEmpty())
+                d.remove(vehicle);
+
+            int newD;
+            var closeDepos = problem.closestDepots.get(c);
+
+            while ((newD = closeDepos.get((int) (Math.random() * closeDepos.size()))) == depot) {
             }
+
+            phenotype.insertCheapest(newD, c);
         }
     }
 
-    private void inverseMutate(Phenotype phenotype) {
-        int depot = (int) (Math.random()*phenotype.FML.size());
-
-        var d = phenotype.FML.get(depot);
-
-        int v = (int) (Math.random()*d.size());
-
-        var vehicle = d.get(v);
-
-        int r1 = (int) (Math.random()*vehicle.size()),
-                r2 = (int) (Math.random()*vehicle.size());
-
-        int index1 = Math.min(r1, r2),
-                index2 = Math.max(r1, r2);
-
-        inverseSubstring(vehicle, index1, index2);
-    }
-
     public static void inverseSubstring(List<Integer> gene, int index1, int index2) {
-        for(int i = 0; i <= (index2 - index1)/2; i++){
+        for (int i = 0; i <= (index2 - index1) / 2; i++) {
             int x = index1 + i;
             int y = index2 - i;
             switchPlace(gene, x, y);

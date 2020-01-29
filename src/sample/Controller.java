@@ -46,6 +46,8 @@ public class Controller {
     public TextField mutationRateField;
     public TextField threadsField;
     public GridPane settings;
+    public Button printButton;
+    public Button stopButton;
     private GraphicsContext gc = null;
     private Problem problem;
 
@@ -64,11 +66,12 @@ public class Controller {
     int counter = 0;
     int iterations;
     private int threadCount = Runtime.getRuntime().availableProcessors();
-    ;
+
     private int[] progress;
     private double currentBestScore;
     private Thread mainThread;
     private boolean runIndefinetly;
+    private boolean emergencyStop = false;
 
     public Controller() {
         timer = new AnimationTimer() {
@@ -101,7 +104,7 @@ public class Controller {
         int nThreads;
         var text = threadsField.getText();
         nThreads = text.isBlank() ? threadCount : Integer.parseInt(text);
-
+        emergencyStop = false;
 
         threads = new ArrayList<>(nThreads);
 
@@ -124,7 +127,7 @@ public class Controller {
                 ga.initiate();
                 Phenotype a = null;
                 int generation = 0;
-                while (progress[finalT]++ < iterations) {
+                while (progress[finalT]++ < iterations && !emergencyStop) {
 
                     a = ga.generation();
                     int finalI = generation++;
@@ -144,6 +147,7 @@ public class Controller {
 
                 Platform.runLater(() -> {
                     settings.setDisable(false);
+                    stopButton.setDisable(true);
                     progressBar.setProgress(0);
                     drawBoard();
                 });
@@ -186,6 +190,8 @@ public class Controller {
 
         taskChooser.setOnAction(this::onTaskCHoosen);
         startButton.setOnAction(this::buttonClicked);
+        printButton.setOnAction(this::printButtonCLicked);
+        stopButton.setOnAction(this::emergencyStop);
 
         series = new ArrayList<>();
         for (int i = 0; i < threadCount; i++) {
@@ -205,6 +211,10 @@ public class Controller {
                 iterationsField.setText(newValue.replaceAll("[^\\d]", ""));
             }
         });
+    }
+
+    private void emergencyStop(ActionEvent actionEvent) {
+        emergencyStop = true;
     }
 
     private void onTaskCHoosen(Event event) {
@@ -258,6 +268,7 @@ public class Controller {
 
     private void buttonClicked(ActionEvent actionEvent) {
         settings.setDisable(true);
+        stopButton.setDisable(false);
 
         var text = iterationsField.getText();
         if(text.isBlank()){
@@ -347,5 +358,11 @@ public class Controller {
                 problem.customers) {
             gc.fillOval(ofsetX + c.point.getX() - 0.5, ofsetY + c.point.getY() - 0.5, 1, 1);
         }
+    }
+
+    private void printButtonCLicked(ActionEvent actionEvent) {
+        int stop = 0;
+        var a = new Phenotype(problem, currentPath);
+
     }
 }
