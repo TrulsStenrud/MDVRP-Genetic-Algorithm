@@ -10,20 +10,29 @@
 <?import javafx.scene.chart.LineChart?>
 <?import javafx.scene.chart.CategoryAxis?>
 <?import javafx.scene.chart.NumberAxis?>
+<?import javafx.scene.control.ProgressBar?>
 <GridPane fx:controller="sample.Controller"
           xmlns:fx="http://javafx.com/fxml" alignment="center" hgap="10" vgap="10">
-    <HBox >
+    <HBox>
         <VBox spacing="50">
             <ComboBox fx:id="taskChooser"/>
             <Button fx:id="startButton" text="Start"/>
-            <LineChart fx:id="chart">
-                <xAxis>
-                    <NumberAxis side="BOTTOM" />
-                </xAxis>
-                <yAxis>
-                    <NumberAxis side="LEFT" upperBound="800" />
-                </yAxis>
-            </LineChart>
+            <VBox alignment="CENTER">
+                <LineChart fx:id="chart">
+                    <xAxis>
+                        <NumberAxis side="BOTTOM"/>
+                    </xAxis>
+                    <yAxis>
+                        <NumberAxis side="LEFT" upperBound="800"/>
+                    </yAxis>
+                </LineChart>
+                <ProgressBar fx:id="progressBar"/>
+
+                <HBox>
+                    <Label text="MinScore: "/>
+                    <Label fx:id="scoreLabel"/>
+                </HBox>
+            </VBox>
         </VBox>
         <Canvas fx:id="canvas" width="1000" height="1000"/>
     </HBox>

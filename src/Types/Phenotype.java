@@ -213,8 +213,8 @@ public class Phenotype {
         int routeA = (int) (Math.random() * depotA.size());
         int routeB = (int) (Math.random() * depotB.size());
 
-        var fromA = depotA.get(routeA);
-        var fromB = depotB.get(routeB);
+        var fromA = (depotA.size() == 0) ? new ArrayList<Integer>() : depotA.get(routeA);
+        var fromB = depotB.size() == 0 ? new ArrayList<Integer>() : depotB.get(routeB);
 
         var routeFromA = new ArrayList<Integer>();
         routeFromA.addAll(fromA);
@@ -247,11 +247,11 @@ public class Phenotype {
         }
 
         for (int newC : routeFromB) {
-            insertCheapest(depot, depotA, newC);
+            insertCheapest(depot, newC);
         }
 
         for (int newC : routeFromA) {
-            b.insertCheapest(depot, depotB, newC);
+            b.insertCheapest(depot, newC);
         }
         var sum3 = getSum(b.FML);
 
@@ -316,8 +316,9 @@ public class Phenotype {
     }
 
 
-    public void insertCheapest(int depot, List<List<Integer>> routes, int newC) {
+    public void insertCheapest(int depot, int newC) {
 
+        var routes = FML.get(depot);
         int minRoute = -1;
         int minI = -1;
         double minCost = Double.POSITIVE_INFINITY;

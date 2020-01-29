@@ -16,6 +16,9 @@ import javafx.scene.chart.LineChart;
 import javafx.scene.chart.XYChart;
 import javafx.scene.control.Button;
 import javafx.scene.control.ComboBox;
+import javafx.scene.control.Label;
+import javafx.scene.control.ProgressBar;
+import javafx.scene.effect.Effect;
 import javafx.scene.paint.Color;
 
 import java.util.Arrays;
@@ -37,20 +40,26 @@ public class Controller {
     public ComboBox<String> taskChooser;
     public Button startButton;
     public LineChart chart;
+    public ProgressBar progressBar;
+    public Label scoreLabel;
     private GraphicsContext gc = null;
-    private GA2 ga = null;
     private Problem problem;
-    int counter = 0;
-    private XYChart.Series s;
 
     private AnimationTimer timer;
-    private Thread thread = new Thread();
     private double ofsetX;
     private double ofsetY;
     private double currentScaling = 1;
 
     private List<List<List<Integer>>> currentPath = null;
     public List<List<List<Integer>>> newPath = null;
+
+    private XYChart.Series s;
+
+    int counter = 0;
+    private GA2 ga = null;
+    private Thread thread = new Thread();
+    public int iterations = 1000;
+    private int i;
 
     public Controller(){
         timer = new AnimationTimer() {
@@ -60,9 +69,43 @@ public class Controller {
                     currentPath = newPath;
                     drawBoard();
                 }
+                progressBar.setProgress((double)i/iterations);
             }
         };
 
+    }
+
+    private void initiateThread() {
+        thread = new Thread(() -> {
+            i = 0;
+            double score = Double.POSITIVE_INFINITY;
+            Phenotype a = null;
+            while (i++ < iterations) {
+                a = ga.generation();
+                int finalI = i;
+                double finalFitnes = a.fitness();
+                if (finalFitnes < score) {
+                    score = a.fitness();
+                    Platform.runLater(() -> {
+                        scoreLabel.setText(String.valueOf(Math.round(finalFitnes)));
+                        s.getData().add(new XYChart.Data(finalI, finalFitnes));
+                    });
+                    newPath = a.getPath();
+                }
+
+            }
+            timer.stop();
+            var b = a;
+            Platform.runLater(() -> {
+                startButton.setDisable(false);
+                taskChooser.setDisable(false);
+                currentPath = b.FML;
+                progressBar.setProgress(0);
+                drawBoard();
+            });
+            System.out.println("finished: " + b.fitness());
+            System.out.println(b.isFeasable());
+        });
     }
 
     @FXML
@@ -83,9 +126,6 @@ public class Controller {
             taskChooser.setValue(list[0]);
             initiateChoosenTask();
         }
-
-
-
     }
 
     private void onTaskCHoosen(Event event) {
@@ -107,6 +147,7 @@ public class Controller {
             System.out.println("Should not reset, wait for thread");
         }
         timer.stop();
+        scoreLabel.setText("");
         s.getData().clear();
         currentPath = null;
         newPath = null;
@@ -124,11 +165,11 @@ public class Controller {
             maxX = Math.max(c.point.getX(), maxX);
             maxY = Math.max(c.point.getY(), maxY);
         }
-        for(var c : problem.depots){
-            minX = Math.min(c.point.getX(), minX);
-            minY = Math.min(c.point.getY(), minY);
-            maxX = Math.max(c.point.getX(), maxX);
-            maxY = Math.max(c.point.getY(), maxY);
+        for(var d : problem.depots){
+            minX = Math.min(d.point.getX(), minX);
+            minY = Math.min(d.point.getY(), minY);
+            maxX = Math.max(d.point.getX(), maxX);
+            maxY = Math.max(d.point.getY(), maxY);
         }
 
         var scaling = 800.0 / Math.max(maxX - minX, maxY - minY);
@@ -143,6 +184,8 @@ public class Controller {
     private void buttonClicked(ActionEvent actionEvent) {
         startButton.setDisable(true);
         taskChooser.setDisable(true);
+
+
         System.out.println("Initiating...");
         var result = ga.initiate();
         System.out.println("initiating finished");
@@ -152,38 +195,15 @@ public class Controller {
         drawBoard();
 
 
-        thread = new Thread(() -> {
-            int i = 0;
-            double score = Double.POSITIVE_INFINITY;
-            Phenotype a = null;
-            while (i++ < 1000) {
-                a = ga.generation();
-                int finalI = i;
-                double finalFitnes = a.fitness();
-                if (finalFitnes < score) {
-                    score = a.fitness();
-                    Platform.runLater(() -> s.getData().add(new XYChart.Data(finalI, finalFitnes)));
-                    newPath = a.getPath();
-                }
-
-            }
-            timer.stop();
-            var b = a;
-            Platform.runLater(() -> {
-                startButton.setDisable(false);
-                taskChooser.setDisable(false);
-                currentPath = b.FML;
-                drawBoard();
-            });
-            System.out.println("finished: " + b.fitness());
-            System.out.println(b.isFeasable());
-        });
+        initiateThread();
 
         thread.start();
         timer.start();
 
 
     }
+
+
 
     private void drawPaths(List<List<List<Integer>>> FML) {
         gc.setStroke(Color.BLACK);

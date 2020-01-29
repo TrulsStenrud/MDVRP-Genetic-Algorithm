@@ -202,8 +202,17 @@ public class GA2 {
             }
             taken.add(r);
 
+            var x = Math.random();
+            if(x < 0.5){
+                mutate(parents.get(r));
+            }
+            else if(x < 1){
+                inverseMutate(parents.get(r));
+            }
+            else{
+                interDepotMutation(parents.get(r));
+            }
 
-            mutate(parents.get(r));
 
         }
 
@@ -214,6 +223,57 @@ public class GA2 {
 
         evaluate();
         return genes[0];
+    }
+
+    private void interDepotMutation(Phenotype phenotype) {
+        int depot = (int) (Math.random()*phenotype.FML.size());
+
+        var d = phenotype.FML.get(depot);
+
+        int v = (int) (Math.random()*d.size());
+
+        var vehicle = d.get(v);
+
+        d.remove(v);
+        int newD;
+        while ((newD = (int) (Math.random()*phenotype.FML.size())) == depot){
+        }
+
+        for(var c : vehicle){
+            phenotype.insertCheapest(newD, c);
+        }
+    }
+
+    private void inverseMutate(Phenotype phenotype) {
+        int depot = (int) (Math.random()*phenotype.FML.size());
+
+        var d = phenotype.FML.get(depot);
+
+        int v = (int) (Math.random()*d.size());
+
+        var vehicle = d.get(v);
+
+        int r1 = (int) (Math.random()*vehicle.size()),
+                r2 = (int) (Math.random()*vehicle.size());
+
+        int index1 = Math.min(r1, r2),
+                index2 = Math.max(r1, r2);
+
+        inverseSubstring(vehicle, index1, index2);
+    }
+
+    public static void inverseSubstring(List<Integer> gene, int index1, int index2) {
+        for(int i = 0; i <= (index2 - index1)/2; i++){
+            int x = index1 + i;
+            int y = index2 - i;
+            switchPlace(gene, x, y);
+        }
+    }
+
+    private static void switchPlace(List<Integer> gene, int x, int y) {
+        int temp = gene.get(x);
+        gene.set(x, gene.get(y));
+        gene.set(y, temp);
     }
 
     private void mutate(Phenotype x) {
@@ -237,7 +297,7 @@ public class GA2 {
         if (vehicle.size() == 0)
             depot.remove(vIndex);
 
-        x.insertCheapest(depIndex, depot, customer);
+        x.insertCheapest(depIndex, customer);
     }
 
 
