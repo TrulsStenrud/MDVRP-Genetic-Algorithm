@@ -20,8 +20,11 @@ public class GA2 {
     private double[][] cost;
 
 
-    public GA2(Problem p) {
+    public GA2(Problem p, int population, int nParents, double mutationRate) {
         this.problem = p;
+        this.population = population;
+        this.nParents = nParents;
+        this.mutationRate = mutationRate;
     }
 
     public static int[] generateShortRoute(Problem problem) {

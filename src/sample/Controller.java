@@ -5,6 +5,8 @@ import Types.Phenotype;
 import Stuff.*;
 import javafx.animation.AnimationTimer;
 import javafx.application.Platform;
+import javafx.beans.value.ChangeListener;
+import javafx.beans.value.ObservableValue;
 import javafx.collections.FXCollections;
 import javafx.event.ActionEvent;
 import javafx.event.Event;
@@ -14,13 +16,11 @@ import javafx.scene.canvas.Canvas;
 import javafx.scene.canvas.GraphicsContext;
 import javafx.scene.chart.LineChart;
 import javafx.scene.chart.XYChart;
-import javafx.scene.control.Button;
-import javafx.scene.control.ComboBox;
-import javafx.scene.control.Label;
-import javafx.scene.control.ProgressBar;
-import javafx.scene.effect.Effect;
+import javafx.scene.control.*;
+import javafx.scene.layout.GridPane;
 import javafx.scene.paint.Color;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
@@ -42,6 +42,12 @@ public class Controller {
     public LineChart chart;
     public ProgressBar progressBar;
     public Label scoreLabel;
+    public TextField iterationsField;
+    public TextField populationField;
+    public TextField parentsField;
+    public TextField mutationRateField;
+    public TextField threadsField;
+    public GridPane settings;
     private GraphicsContext gc = null;
     private Problem problem;
 
@@ -53,59 +59,118 @@ public class Controller {
     private List<List<List<Integer>>> currentPath = null;
     public List<List<List<Integer>>> newPath = null;
 
-    private XYChart.Series s;
+    private List<XYChart.Series> series;
+
+    private List<Thread> threads;
 
     int counter = 0;
-    private GA2 ga = null;
-    private Thread thread = new Thread();
-    public int iterations = 1000;
-    private int i;
+    int iterations;
+    private int threadCount = Runtime.getRuntime().availableProcessors();
+    ;
+    private int[] progress;
+    private double currentBestScore;
+    private Thread mainThread;
 
-    public Controller(){
+    public Controller() {
         timer = new AnimationTimer() {
             @Override
             public void handle(long l) {
-                if(newPath != currentPath){
-                    currentPath = newPath;
-                    drawBoard();
-                }
-                progressBar.setProgress((double)i/iterations);
+                updateGUI();
             }
         };
 
     }
 
+    private void updateGUI() {
+        if (newPath != currentPath) {
+            currentPath = newPath;
+            scoreLabel.setText(String.valueOf(Math.round(currentBestScore)));
+            drawBoard();
+        }
+        progressBar.setProgress(Arrays.stream(progress).average().getAsDouble() / iterations);
+    }
+
+    private void finalUpdateGui(){
+        updateGUI();
+
+        var isFeasable = new Phenotype(problem, currentPath).isFeasable();
+
+
+    }
+
     private void initiateThread() {
-        thread = new Thread(() -> {
-            i = 0;
-            double score = Double.POSITIVE_INFINITY;
-            Phenotype a = null;
-            while (i++ < iterations) {
-                a = ga.generation();
-                int finalI = i;
-                double finalFitnes = a.fitness();
-                if (finalFitnes < score) {
-                    score = a.fitness();
-                    Platform.runLater(() -> {
-                        scoreLabel.setText(String.valueOf(Math.round(finalFitnes)));
-                        s.getData().add(new XYChart.Data(finalI, finalFitnes));
-                    });
-                    newPath = a.getPath();
+        int nThreads;
+        var text = threadsField.getText();
+        nThreads = text.isBlank() ? threadCount : Integer.parseInt(text);
+
+
+        threads = new ArrayList<>(nThreads);
+
+        progress = new int[nThreads];
+        Arrays.fill(progress, 0);
+        currentBestScore = Double.POSITIVE_INFINITY;
+        series.forEach(x -> x.getData().clear());
+
+        int population = Integer.parseInt(populationField.getText());
+        int nParents = Integer.parseInt(parentsField.getText());
+        double mutationRate = Double.parseDouble(mutationRateField.getText());
+
+        for (int t = 0; t < nThreads; t++) {
+
+            int finalT = t;
+            var thread = new Thread(() -> {
+
+                double score = Double.POSITIVE_INFINITY;
+                var ga = new GA2(problem, population, nParents, mutationRate);
+                ga.initiate();
+                Phenotype a = null;
+                while (progress[finalT]++ < iterations) {
+                    a = ga.generation();
+                    int finalI = progress[finalT];
+                    double finalFitnes = a.fitness();
+                    if (finalFitnes < score) {
+                        score = a.fitness();
+                        var finalPath = a.getPath();
+                        Platform.runLater(() -> {
+                            trySetBestScore(finalPath, finalFitnes);
+                            series.get(finalT).getData().add(new XYChart.Data(finalI, finalFitnes));
+                        });
+                    }
+
                 }
 
+                Platform.runLater(() -> {
+                    settings.setDisable(false);
+                    progressBar.setProgress(0);
+                    drawBoard();
+                });
+
+            });
+            threads.add(thread);
+        }
+
+        mainThread = new Thread(() -> {
+            for (var t : threads) {
+                t.start();
+            }
+
+            for (var t : threads) {
+                try {
+                    t.join();
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                }
             }
             timer.stop();
-            var b = a;
-            Platform.runLater(() -> {
-                startButton.setDisable(false);
-                taskChooser.setDisable(false);
-                currentPath = b.FML;
-                progressBar.setProgress(0);
-                drawBoard();
-            });
-            System.out.println("finished: " + b.fitness());
-            System.out.println(b.isFeasable());
+            Platform.runLater(this::finalUpdateGui);
         });
+    }
+
+    private void trySetBestScore(List<List<List<Integer>>> finalPath, double scoreCandidate) {
+        if (scoreCandidate < currentBestScore) {
+            newPath = finalPath;
+            currentBestScore = scoreCandidate;
+        }
     }
 
     @FXML
@@ -114,18 +179,33 @@ public class Controller {
         Arrays.sort(list);
         taskChooser.setItems(FXCollections.observableArrayList(list));
 
-        s = new XYChart.Series();
-        chart.getData().add(s);
-
         gc = canvas.getGraphicsContext2D();
 
         taskChooser.setOnAction(this::onTaskCHoosen);
         startButton.setOnAction(this::buttonClicked);
 
+        series = new ArrayList<>();
+        for (int i = 0; i < threadCount; i++) {
+            var s = new XYChart.Series();
+            chart.getData().add(s);
+            series.add(s);
+        }
+
         if (list.length > 0) {
             taskChooser.setValue(list[0]);
             initiateChoosenTask();
         }
+
+        progressBar.setProgress(0);
+        iterationsField.textProperty().addListener(new ChangeListener<String>() {
+            @Override
+            public void changed(ObservableValue<? extends String> observable, String oldValue,
+                                String newValue) {
+                if (!newValue.matches("\\d*")) {
+                    iterationsField.setText(newValue.replaceAll("[^\\d]", ""));
+                }
+            }
+        });
     }
 
     private void onTaskCHoosen(Event event) {
@@ -136,19 +216,15 @@ public class Controller {
         reset();
         var task = taskChooser.getValue();
         problem = FileParser.readParseFile(task);
-        ga = new GA2(problem);
+        series.forEach(x -> x.getData().clear());
         calculateOffsetsAndScaling();
         drawBoard();
         counter = 0;
     }
 
-    private void reset(){
-        if(thread.isAlive()){
-            System.out.println("Should not reset, wait for thread");
-        }
-        timer.stop();
+    private void reset() {
         scoreLabel.setText("");
-        s.getData().clear();
+
         currentPath = null;
         newPath = null;
     }
@@ -159,13 +235,13 @@ public class Controller {
         double maxX = Double.NEGATIVE_INFINITY,
                 maxY = Double.NEGATIVE_INFINITY;
 
-        for(var c : problem.customers){
+        for (var c : problem.customers) {
             minX = Math.min(c.point.getX(), minX);
             minY = Math.min(c.point.getY(), minY);
             maxX = Math.max(c.point.getX(), maxX);
             maxY = Math.max(c.point.getY(), maxY);
         }
-        for(var d : problem.depots){
+        for (var d : problem.depots) {
             minX = Math.min(d.point.getX(), minX);
             minY = Math.min(d.point.getY(), minY);
             maxX = Math.max(d.point.getX(), maxX);
@@ -177,38 +253,32 @@ public class Controller {
         gc.scale(s, s);
         currentScaling = scaling;
 
-        ofsetX = - minX + 10;
-        ofsetY = - minY + 10;
+        ofsetX = -minX + 10;
+        ofsetY = -minY + 10;
     }
 
     private void buttonClicked(ActionEvent actionEvent) {
-        startButton.setDisable(true);
-        taskChooser.setDisable(true);
-
+        settings.setDisable(true);
+        iterations = Integer.parseInt(iterationsField.getText());
 
         System.out.println("Initiating...");
-        var result = ga.initiate();
         System.out.println("initiating finished");
         //drawPaths(result);
-        counter++;
 
-        drawBoard();
+//        drawBoard();
 
 
         initiateThread();
 
-        thread.start();
+        mainThread.start();
         timer.start();
-
-
     }
-
 
 
     private void drawPaths(List<List<List<Integer>>> FML) {
         gc.setStroke(Color.BLACK);
-        var d = ga.problem.depots;
-        var c = ga.problem.customers;
+        var d = problem.depots;
+        var c = problem.customers;
 
         var sum = 0.0;
         int color = 0;
@@ -219,7 +289,7 @@ public class Controller {
 
             for (int car = 0; car < current.size(); car++) {
 
-                gc.setStroke(colors[color%colors.length]);
+                gc.setStroke(colors[color % colors.length]);
                 color++;
 
                 var currCar = current.get(car);
@@ -262,7 +332,7 @@ public class Controller {
 
     private void drawBoard() {
         gc.clearRect(0, 0, 1000, 1000);
-        if(currentPath != null){
+        if (currentPath != null) {
             drawPaths(currentPath);
         }
         drawDots();
@@ -273,7 +343,7 @@ public class Controller {
         gc.setStroke(Color.BLACK);
         gc.setLineWidth(0.2);
         for (Depot d :
-                ga.problem.depots) {
+                problem.depots) {
             gc.strokeRect(ofsetX + d.point.getX() - 0.5, ofsetY + d.point.getY() - 0.5, 1, 1);
         }
     }
@@ -281,7 +351,7 @@ public class Controller {
     private void drawDots() {
         gc.setFill(Color.BLACK);
         for (Customer c :
-                ga.problem.customers) {
+                problem.customers) {
             gc.fillOval(ofsetX + c.point.getX() - 0.5, ofsetY + c.point.getY() - 0.5, 1, 1);
         }
     }
