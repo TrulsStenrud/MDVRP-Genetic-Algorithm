@@ -361,8 +361,8 @@ public class Controller {
     }
 
     private void printButtonCLicked(ActionEvent actionEvent) {
-        int stop = 0;
-        var a = new Phenotype(problem, currentPath);
-
+        var result = new Phenotype(problem, currentPath);
+        var task = taskChooser.getValue();
+        FileParser.write("solution_for_"+task, result);
     }
 }

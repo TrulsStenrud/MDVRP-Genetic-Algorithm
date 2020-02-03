@@ -323,7 +323,7 @@ public class Phenotype {
 
     }
 
-    private double getRouteLoad(List<Integer> currRoute) {
+    public double getRouteLoad(List<Integer> currRoute) {
         double sum = 0.0;
         for (var c : currRoute) {
             sum += customers[c].demand;
@@ -331,7 +331,7 @@ public class Phenotype {
         return sum;
     }
 
-    private double getRouteCost(List<Integer> currRoute, int depot) {
+    public double getRouteCost(List<Integer> currRoute, int depot) {
         double c = 0.0;
 
         if (currRoute.size() == 0)
