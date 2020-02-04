@@ -25,7 +25,6 @@ import java.util.List;
 public class Controller {
     public Color[] colors = new Color[]{
             Color.RED,
-            Color.YELLOW,
             Color.BLUE,
             Color.GREEN,
             Color.AQUA,
@@ -296,18 +295,14 @@ public class Controller {
         var d = problem.depots;
         var c = problem.customers;
 
-        var sum = 0.0;
-        int color = 0;
         for (int depoI = 0; depoI < FML.size(); depoI++) {
 
             var depot = d[depoI].point;
             var current = FML.get(depoI);
 
+            gc.setStroke(colors[depoI % colors.length]);
+
             for (int car = 0; car < current.size(); car++) {
-
-                gc.setStroke(colors[color % colors.length]);
-                color++;
-
                 var currCar = current.get(car);
 
                 if (currCar.size() == 0)
@@ -315,17 +310,14 @@ public class Controller {
 
                 var start = c[currCar.get(0)].point;
                 gc.strokeLine(ofsetX + depot.getX(), ofsetY + depot.getY(), ofsetX + start.getX(), ofsetY + start.getY());
-                sum += new Point2D(start.getX(), start.getY()).distance(new Point2D(depot.getX(), depot.getY()));
                 for (int i = 1; i < currCar.size(); i++) {
                     var pointA = c[currCar.get(i)].point;
                     var pointB = c[currCar.get(i - 1)].point;
                     gc.strokeLine(ofsetX + pointA.getX(), ofsetY + pointA.getY(), ofsetX + pointB.getX(), ofsetY + pointB.getY());
-                    sum += new Point2D(pointA.getX(), pointA.getY()).distance(new Point2D(pointB.getX(), pointB.getY()));
                 }
 
                 var pointA = c[currCar.get(currCar.size() - 1)].point;
                 var pointB = d[depoI].point;
-                sum += new Point2D(pointA.getX(), pointA.getY()).distance(new Point2D(pointB.getX(), pointB.getY()));
                 gc.strokeLine(ofsetX + pointA.getX(), ofsetY + pointA.getY(), ofsetX + pointB.getX(), ofsetY + pointB.getY());
 
             }
