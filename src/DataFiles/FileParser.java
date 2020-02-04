@@ -8,11 +8,13 @@ import javafx.geometry.Point2D;
 
 import javax.management.InvalidAttributeValueException;
 import java.io.*;
+import java.lang.reflect.Array;
 import java.nio.charset.StandardCharsets;
 import java.text.DecimalFormat;
 import java.text.NumberFormat;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 
 public class FileParser {
@@ -74,7 +76,7 @@ public class FileParser {
         if(listOfFiles == null)
             return new String[0];
 
-        return Arrays.stream(listOfFiles).map(File::getName).toArray(String[]::new);
+        return Arrays.stream(listOfFiles).map(File::getName).filter(x -> !x.contains(".DS_Store")).toArray(String[]::new);
     }
 
     public static Problem readParseFile(String file){
@@ -110,7 +112,13 @@ public class FileParser {
         BufferedReader reader = new BufferedReader(innerReader);
         String line;
         while ((line = reader.readLine()) != null){
-            var values = Arrays.stream(line.trim().split("\\s+")).map(Integer::parseInt).toArray(Integer[]::new);
+            Integer[] values = null;
+            try{
+                values = Arrays.stream(line.trim().split("\\s+")).map(Integer::parseInt).toArray(Integer[]::new);
+
+            }catch (NumberFormatException e){
+                int stop = 2;
+            }
 
             switch (state){
                 case FirstLine:
