@@ -1,4 +1,3 @@
-package Tests;
 import Stuff.GA;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;

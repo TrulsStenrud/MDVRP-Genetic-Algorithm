@@ -5,7 +5,6 @@ import Stuff.Depot;
 import Stuff.Problem;
 import Types.Phenotype;
 import javafx.geometry.Point2D;
-
 import javax.management.InvalidAttributeValueException;
 import java.io.*;
 import java.lang.reflect.Array;
