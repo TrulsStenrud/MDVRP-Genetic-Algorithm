@@ -4,6 +4,6 @@ public class Main {
      * but it does not work if you run GameOfLifeApplication directly
      */
     public static void main(final String[] args)  {
-        GameOfLifeApplication.main(args);
+        MDVRPApplication.main(args);
     }
 }
